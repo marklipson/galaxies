@@ -1,0 +1,105 @@
+<style>
+  body {
+    font-family: arial, helvetic, sans-serif;
+    color: #c0c0c0;
+    background-color: #333;
+  }
+  .type {
+    text-decoration: underline;
+    margin-left: 8px;
+  }
+  .panel {
+    position: fixed;
+    top: 4px;
+    z-index: 3;
+    opacity: 0.8;
+    border: solid 2px #ccc;
+    background-color: #666;
+    overflow: auto;
+    color: #ccc;
+    width: 300px;
+    padding: 8px;
+  }
+  .panel h2 {
+    margin: 0;
+    font-size: 22px;
+  }
+  #controls {
+    right: 4px;
+    font-size: 13px;
+  }
+  #notes {
+    left: 4px;
+    max-height: 400px;
+  }
+  #view {
+    position: fixed;
+    left: 0px;
+    right: 0px;
+    top: 0px;
+    bottom: 0px;
+    width: 100%;
+    height: 100%;
+  }
+  .status {
+    color: #c0c0c0;
+  }
+  .minimize {
+    float: right;
+    background-color: #777;
+    font-size: 16px;
+    padding: 0 8px;
+    border: solid 2px #ccc;
+    font-weight: bold;
+    cursor: pointer;
+   }
+  .minimize:hover {
+    background-color: #aaa;
+  }
+</style>
+<script type="text/javascript" src="jquery.js">//</script>
+<script type="text/javascript" src="galaxy-database-xyz.js">//</script>
+<script type="text/javascript" src="galaxies.js">//</script>
+<script type="text/javascript" src="galaxy-clusters.js">//</script>
+
+<div id="controls" class="panel">
+  <h2>
+    <div class='minimize'>-</div>
+    tools
+  </h2>
+  <div class='body'>
+   <p>
+     <button class='mode' title='Choose what level of the universe to explore'>mode</button>
+     zoom:<button class='zoom' title=''>zoom</button>
+     isometric:<button class='isometric'>isometric</button>
+  <!-- 
+     <button class='nearby'>nearby</button>
+  -->
+   </p>
+   <p>
+     <div class='status'></div>
+   </p>
+  </div>
+</div>
+
+<div id='view'></div>
+
+<div id='notes' class="panel">
+  <h2>
+    <div class='minimize'>-</div>
+    NEARBY GALAXIES
+  </h2>
+  <div class='body'>
+   <p>
+   Coordinates are based on galactic longitude and latitude, and distance is measured in megaparsecs.
+   </p>
+   <p>
+   Keys:
+   <li>arrow keys move</li>
+   <li>space=forward, delete=backward</li>
+   <li>hold down shift to turn instead of move</li>
+   <li>hold down alt key to move or rotate faster</li>
+   <li>"0" key returns to starting point</li>
+   </p>  
+  </div>
+</div>
