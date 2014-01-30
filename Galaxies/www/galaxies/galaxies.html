@@ -20,9 +20,18 @@
     width: 300px;
     padding: 8px;
   }
+  .panel a {
+    color: #ccf
+  }
+  .panel a:visited {
+    color: #ecf
+  }
   .panel h2 {
     margin: 0;
     font-size: 22px;
+  }
+  .panel hr {
+    border-color: #888;
   }
   #controls {
     right: 4px;
@@ -56,11 +65,15 @@
   .minimize:hover {
     background-color: #aaa;
   }
+  .forMode {
+    display: none;
+  }
 </style>
 <script type="text/javascript" src="jquery.js">//</script>
 <script type="text/javascript" src="galaxy-database-xyz.js">//</script>
 <script type="text/javascript" src="galaxies.js">//</script>
 <script type="text/javascript" src="galaxy-clusters.js">//</script>
+<script type="text/javascript" src="stars.js">//</script>
 
 <div id="controls" class="panel">
   <h2>
@@ -87,11 +100,29 @@
 <div id='notes' class="panel">
   <h2>
     <div class='minimize'>-</div>
-    NEARBY GALAXIES
+    <span class='forMode galaxies'>NEARBY GALAXIES</span>
+    <span class='forMode stars'>STARS</span>
+    <span class='forMode clusters'>GALAXY CLUSTERS</span>
+    <span class='forMode grid'>TEST GRID</span>
   </h2>
   <div class='body'>
    <p>
-   Coordinates are based on galactic longitude and latitude, and distance is measured in megaparsecs.
+     <span class='forMode galaxies'>
+      Each dot represents a galaxy.  Coordinates are based on galactic longitude and latitude, and coordinates are in megaparsecs.
+      Nearby galaxies are from <a href='http://edd.ifa.hawaii.edu/'>EDD</a>.
+     </span>
+     <span class='forMode clusters'>
+      Each dot represents one <a target='ref' href='http://en.wikipedia.org/wiki/Galaxy_cluster'>galaxy cluster</a>.
+      Coordinates are based on galactic longitude and latitude, and coordinates is in megaparsecs.
+      Galaxy cluster data is from <a href='http://ned.ipac.caltech.edu/'>NED</a>.
+     </span>
+     <span class='forMode stars'>
+      Coordinates are equatorial, and coordinates are in parsecs.
+      Stars are from the <a target='ref' href='http://www.astronexus.com/node/34'">HYG</a> database.
+     </span>
+     <span class='forMode grid'>
+       This is a test of the rendering logic.
+     </span>
    </p>
    <p>
    Keys:
@@ -99,7 +130,16 @@
    <li>space=forward, delete=backward</li>
    <li>hold down shift to turn instead of move</li>
    <li>hold down alt key to move or rotate faster</li>
-   <li>"0" key returns to starting point</li>
+   <li>"0" key returns to
+    <span class='forMode galaxies'>the Milky Way</span>
+    <span class='forMode stars'>Sol</span>
+    <span class='forMode clusters'>the local cluster</span>
+    <span class='forMode grid'>the origin</span>
+   </li>
    </p>  
   </div>
 </div>
+<!-- 
+  Possible future sources:
+    http://www.sdss3.org/dr9/data_access/bulk.php - this survey has more accurate distances and includes billions of galaxies including pictures
+ -->

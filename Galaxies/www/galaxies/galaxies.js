@@ -12,6 +12,34 @@ $(function(){
   var nearbyTable = [];
   
   galaxies.push({ x: 0, y: 0, z: 0, name: "Milky Way", home: true });
+  stars.push({ x: 0, y: 0, z: 0, name: "Sol", home: true });
+  for (var n=0; n < galaxyClusters.length; n++)
+  {
+    var gc = galaxyClusters[n];
+    if (gc.x == 0  &&  gc.y == 0  &&  gc.z == 0)
+    {
+      gc.name = "Local Cluster";
+      gc.home = true;
+      break;
+    }
+  }
+  if (stars)
+  {
+    // see http://www.vendian.org/mncharity/dir3/starcolor/
+    var letters = "OBAFGKM";
+    var colors = ["#9bb0ff","#aabfff","#cad7ff","#f8f7ff","#fff4ea","#ffd2a1","#ffcc6f"];
+    for (var n=0; n < stars.length; n++)
+    {
+      if (! stars[n].s)
+        continue;
+      var spectrum = stars[n].s;
+      var which = letters.indexOf( spectrum.charAt(0) );
+      if (which >= 0)
+        stars[n].color = colors[which];
+      if (stars[n].M)
+        stars[n].mag = Math.exp( stars[n].mag );
+    }
+  }
   
   // experimental - draw lines between nearby galaxies to show clustering
   function buildNearbyTable( threshold )
@@ -98,9 +126,9 @@ $(function(){
       if (mode == "clusters")
       {
         this.objectList = galaxyClusters;
-        this.objectRadius = 0.2;
+        this.objectRadius = 0.4;
         this.zoom = 200;
-        this.speedMultiplier = 40;
+        this.speedMultiplier = 10;
       }
       else if (mode == "galaxies")
       {
@@ -111,7 +139,10 @@ $(function(){
       }
       else if (mode == "stars")
       {
-        // tbd
+        this.objectList = stars;
+        this.objectRadius = 0.05;
+        this.zoom = 400;
+        this.speedMultiplier = 2;
       }
       else if (mode == "grid")
       {
@@ -120,7 +151,12 @@ $(function(){
         for (var x=-10; x <= 10; x++)
           for (var y=-10; y <= 10; y++)
             for (var z=-10; z <= 10; z++)
-              objs.push({x: x, y: y, z: z, name: x+","+y+","+z });
+            {
+              var obj = {x: x, y: y, z: z, name: x+","+y+","+z };
+              if (x == 0  &&  y == 0  &&  z == 0)
+                obj.home = true;
+              objs.push( obj );
+            }
         this.objectList = objs;
         this.objectRadius = 0.04;
         this.zoom = 400;
@@ -134,7 +170,8 @@ $(function(){
         this.view = clone( view0 );
       }
       this.velocity = [0,0,0];
-      // TODO start a little farther back for clusters
+      $(".forMode").hide();
+      $(".forMode." + mode).show();
     },
 
     tick: function()
@@ -178,7 +215,6 @@ $(function(){
     {
       ctx.fillStyle = this.bgColor;
       ctx.fillRect( 0, 0, canvasWidth, canvasHeight );
-      ctx.fillStyle = this.objectColor;
       var displayed = [];
       for (var nG=0; nG < this.objectList.length; nG++)
       {
@@ -189,7 +225,7 @@ $(function(){
         var r = this.zoom * this.objectRadius / s[2];
         if (r > 1000)
           continue;
-        var mag = 10 / s[2];
+        var mag = (galaxy.mag ? (galaxy.mag) : 10) / s[2];
         if (mag > 0.7)
           mag = 0.7;
         if (mag < 0.1)
@@ -200,6 +236,10 @@ $(function(){
         ctx.globalAlpha = mag * fadeClose;
         if (galaxy.home)
           ctx.fillStyle = "#60ffc0";
+        else if (galaxy.color)
+          ctx.fillStyle = galaxy.color;
+        else
+          ctx.fillStyle = this.objectColor;
         if (r <= 0.6)
           ctx.fillRect( s[0], s[1], 1, 1 );
         else
@@ -209,9 +249,7 @@ $(function(){
           ctx.closePath();
           ctx.fill();
         }
-        if (galaxy.home)
-          ctx.fillStyle = this.objectColor;
-        if (r > 0.6)
+        if (r > 1.5)
           displayed.push({ galaxy: galaxy, x: s[0], y: s[1], r: r, distance: s[2] });
         ctx.globalAlpha = 1;
         if (galaxy === this.highlightObject)
@@ -251,9 +289,15 @@ $(function(){
       $(".status").text( "your position: (" + c[0].toFixed(2) + "," + c[1].toFixed(2) + "," + c[2].toFixed(2) + ")")
       if (this.highlightObject)
       {
-        $(".status").append( "<br/>" );
         var g = this.highlightObject;
-        $(".status").append( "highlighted galaxy: " + g.name + " (" + g.x.toFixed(2) + "," + g.y.toFixed(2) + "," + g.z.toFixed(2) + ")" );
+        var d = Math.sqrt( g.x*g.x+g.y*g.y+g.z*g.z );
+        var dly = d*3.26163344;
+        var cat = $("<p/>");
+        var type = this.mode.replace( /s$/, "" );
+        cat.append( "highlighted: " + (g.name?g.name:"anonymous " + type) );
+        cat.append( "<li>coords: (" + g.x.toFixed(2) + "," + g.y.toFixed(2) + "," + g.z.toFixed(2) + ")</li>" );
+        cat.append( "<li>dist. from Sol: " + d.toFixed(1) + ((this.mode=='stars')?"pc" + " (" + dly.toFixed(1) + "ly)":"mpc" + " (" + dly.toFixed(1) + "Mly)") + "</li>" );
+        $(".status").append( cat );
       }
       this.displayedObjects = displayed;
     },
@@ -397,15 +441,17 @@ $(function(){
     btn.text( names[0] );
     onChanged( names[0] );
   };
-  $(".zoom").toggleButton( ["near","medium","far"], function(mode){
-    if (mode == "far")
+  $(".zoom").toggleButton( ["medium","close","far"], function(mode){
+    if (mode == "very far")
       viewer.zoom = 100;
-    else if (mode == "medium")
+    else if (mode == "far")
       viewer.zoom = 200;
-    else
+    else if (mode == "medium")
       viewer.zoom = 400;
+    else if (mode == "close")
+      viewer.zoom = 800;
   });
-  $(".mode").toggleButton( ["galaxies","clusters","grid","stars"], function(mode){
+  $(".mode").toggleButton( ["stars","galaxies","clusters","grid"], function(mode){
     viewer.setMode( mode );
   });
   $(".isometric").toggleButton( ["off","on"], function(mode){
@@ -435,3 +481,7 @@ $(function(){
   });
   
 });
+//TODO angular velocity for rotation, not hard steps
+//TODO smooth run back to '0'
+//TODO clustering around Z axis
+
