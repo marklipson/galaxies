@@ -5,11 +5,13 @@ import java.io.FileWriter;
 import static java.lang.Math.*;
 
 /**
- * Processing code to build star/galaxy/cluster JS files.
+ * Try this next!
+ *   http://www.sdss3.org/dr10/
  */
 public class EDD_Galaxies
 {
-  static final double d2r = 180 / PI;
+  static final File base = new File( "/Users/marklipson/Desktop/galaxies-stuff/" );
+  static final double d2r = PI / 180;
 
   /**
    * Convert 'z' (% of speed of light redshift) to megaparsecs.
@@ -36,7 +38,7 @@ public class EDD_Galaxies
    */
   public static void process_HYG_data() throws Exception
   {
-    File input = new File( "/Users/marklipson/Desktop/star-catalog-hygfull.csv" );
+    File input = new File( base, "star-catalog-hygfull.csv" );
     File output = new File( input.getParentFile(), "stars.js" );
     BufferedReader r = new BufferedReader( new FileReader( input ) );
     FileWriter w = new FileWriter( output );
@@ -50,7 +52,10 @@ public class EDD_Galaxies
       if (! cols[0].matches( "[0-9]+" ))
         continue;
       String name = cols[6];
-      double ra = Double.parseDouble( cols[7] ) * d2r;
+      String name2 = cols[5];
+      if (name.isEmpty())
+        name = name2;
+      double ra = Double.parseDouble( cols[7] )*15 * d2r;
       double decl = Double.parseDouble( cols[8] ) * d2r;
       double D = Double.parseDouble( cols[9] );
       double absMag = Double.parseDouble( cols[11] );
@@ -84,8 +89,6 @@ public class EDD_Galaxies
   /**
    * Galaxy data from:
    *   http://edd.ifa.hawaii.edu/dfirst.php?
-   * Alternative (larger DB):
-   *   http://ned.ipac.caltech.edu
    *   
    *  0   1   2   3 4 5 6 7 8 91011 12  13  14   15
    * pgc|Dist|DM|eD|C|T|L|M|S|N|H|F|RAJ|DeJ|Glon|Glat|SGL|SGB|Ty|Asfd|Btot|Ks|Vhel|V...
@@ -93,7 +96,7 @@ public class EDD_Galaxies
    */
   public static void process_EDD_data() throws Exception
   {
-    File input = new File( "/Users/marklipson/Desktop/galaxy-database.csv" );
+    File input = new File( base, "galaxy-database.csv" );
     File output = new File( input.getParentFile(), "galaxy-database-xyz.js" );
     BufferedReader r = new BufferedReader( new FileReader( input ) );
     FileWriter w = new FileWriter( output );
@@ -127,13 +130,14 @@ public class EDD_Galaxies
   }
   
   /**
+   * http://ned.ipac.caltech.edu
+   *   
    * No.|Object Name|RA(deg)|DEC(deg)|Type|Velocity|Redshift|Redshift Flag|Magnitude and Filter|Distance (arcmin)|References|Notes|Photometry Points|Positions|Redshift Points|Diameter Points|Associations
    * 1|NSCS J000001+051909|  0.00417 |   5.31917 |GClstr| 56961| 0.190000 |EST |     |  0.000|1|0|0|0|0|0|0
-   * 
    */
   public static void process_NED_data() throws Exception
   {
-    File input = new File( "/Users/marklipson/Desktop/ned-galactic-clusters.txt" );
+    File input = new File( base, "ned-galactic-clusters.txt" );
     File output = new File( input.getParentFile(), "galaxy-clusters.js" );
     BufferedReader r = new BufferedReader( new FileReader( input ) );
     FileWriter w = new FileWriter( output );
@@ -171,7 +175,8 @@ public class EDD_Galaxies
     try
     {
       //process_EDD_data();
-      process_HYG_data();
+      process_NED_data();
+      //process_HYG_data();
     }
     catch( Exception x )
     {
