@@ -11,6 +11,24 @@ $(function(){
   var altCtx = createCanvas( canvasWidth, canvasHeight );
   var nearbyTable = [];
   
+  if (false)
+  {
+    var oo = stars;
+    var nZ1 = 0, nZ2 = 0, nZ3 = 0;
+    console.log( "n = " + oo.length );
+    for (var n=0; n < oo.length; n++)
+    {
+      var o = oo[n];
+      if (Math.abs(o.x) < 1  &&  Math.abs(o.y) < 1)
+        nZ1 ++;
+      if (Math.abs(o.x) < 2  &&  Math.abs(o.y) < 2)
+        nZ2 ++;
+      if (Math.abs(o.x) < 3  &&  Math.abs(o.y) < 3)
+        nZ3 ++;
+    }
+    console.log( "nZ1 = " + nZ1 + ", nZ2 = " + nZ2 + ", nZ3 = " + nZ3 );
+  }
+  
   galaxies.push({ x: 0, y: 0, z: 0, name: "Milky Way", home: true });
   stars.push({ x: 0, y: 0, z: 0, name: "Sol", home: true });
   for (var n=0; n < galaxyClusters.length; n++)
@@ -220,7 +238,7 @@ $(function(){
       if (Math.abs(sx) > 2000  ||  Math.abs(sy) > 2000)
         return null;
       sx += canvasWidth/2;
-      sy += canvasHeight/2;
+      sy = canvasHeight/2 - sy;
       return [sx,sy,this.isometric?this.isometricZ : vz];
     },
     draw: function( ctx )
@@ -412,15 +430,15 @@ $(function(){
       break;
     case 38: // up
       if (evt.shiftKey)
-        viewer.spin( 1, -sA );
-      else
-        viewer.move( 1, -s );
-      break;
-    case 40: // down
-      if (evt.shiftKey)
         viewer.spin( 1, sA );
       else
         viewer.move( 1, s );
+      break;
+    case 40: // down
+      if (evt.shiftKey)
+        viewer.spin( 1, -sA );
+      else
+        viewer.move( 1, -s );
       break;
     case 32: // space
       if (evt.shiftKey)
