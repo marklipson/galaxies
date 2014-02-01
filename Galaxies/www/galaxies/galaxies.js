@@ -101,6 +101,7 @@ $(function(){
     center: clone( center0 ),
     view: clone( view0 ),
     velocity: [0,0,0],
+    angularVelocity: [0,0,0],
     friction: 0.2,
     isometric: false,
     isometricZ: 20,
@@ -170,6 +171,7 @@ $(function(){
         this.view = clone( view0 );
       }
       this.velocity = [0,0,0];
+      this.angularVelocity = [0,0,0];
       $(".forMode").hide();
       $(".forMode." + mode).show();
     },
@@ -188,6 +190,16 @@ $(function(){
       v[0] *= f;
       v[1] *= f;
       v[2] *= f;
+      var av = this.angularVelocity;
+      if (av[0] != 0)
+        this.rotate( 0, av[0] );
+      if (av[1] != 0)
+        this.rotate( 1, av[1] );
+      if (av[2] != 0)
+        this.rotate( 2, av[2] );
+      av[0] *= f;
+      av[1] *= f;
+      av[2] *= f;
     },
     toScreenCoords: function( x, y, z )
     {
@@ -302,6 +314,7 @@ $(function(){
       this.displayedObjects = displayed;
     },
     
+    // rotate the viewpoint
     rotate: function( axis, angle )
     {
       var v = this.view;
@@ -316,7 +329,15 @@ $(function(){
       v2[a2] = v[a2];
       this.view = v2;
     },
-    
+
+    // give the viewpoint some angular velocity
+    spin: function( axis, amount )
+    {
+      var av = this.angularVelocity;
+      av[axis] += amount;
+    },
+
+    // give the viewpoint some velocity
     move: function( axis, dist )
     {
       var push = true;
@@ -379,37 +400,37 @@ $(function(){
     {
     case 37: // left
       if (evt.shiftKey)
-        viewer.rotate( 2, sA );
+        viewer.spin( 2, sA );
       else
         viewer.move( 0, -s );
       break;
     case 39: // right
       if (evt.shiftKey)
-        viewer.rotate( 2, -sA );
+        viewer.spin( 2, -sA );
       else
         viewer.move( 0, s );
       break;
     case 38: // up
       if (evt.shiftKey)
-        viewer.rotate( 1, -sA );
+        viewer.spin( 1, -sA );
       else
         viewer.move( 1, -s );
       break;
     case 40: // down
       if (evt.shiftKey)
-        viewer.rotate( 1, sA );
+        viewer.spin( 1, sA );
       else
         viewer.move( 1, s );
       break;
     case 32: // space
       if (evt.shiftKey)
-        viewer.rotate( 0, 0.01 );
+        viewer.spin( 0, 0.01 );
       else
         viewer.move( 2, s );
       break;
     case 8: // delete
       if (evt.shiftKey)
-        viewer.rotate( 0, -0.01 );
+        viewer.spin( 0, -0.01 );
       else
         viewer.move( 2, -s );
       break;
