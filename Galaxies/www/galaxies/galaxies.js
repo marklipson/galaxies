@@ -3,30 +3,38 @@ $(function(){
   var center0 = [0,0,-0.06];
   var view0 = [[1,0,0],[0,1,0],[0,0,1]];
   var viewArea = $("#view");
-  var canvas = $("<canvas width='" + viewArea.width() + "' height='" + viewArea.height() + "'></canvas>");
-  viewArea.append( canvas );
-  var canvasWidth = canvas.attr("width");
-  var canvasHeight = canvas.attr("height");
-  var ctx = canvas[0].getContext('2d');
-  var altCtx = createCanvas( canvasWidth, canvasHeight );
+  var canvas;
+  var canvasWidth;
+  var canvasHeight;
+  var ctx, altCtx, altCanvas;
   var nearbyTable = [];
+
+  function resize()
+  {
+    canvas = $("<canvas width='" + viewArea.width() + "' height='" + viewArea.height() + "'></canvas>");
+    viewArea.html( canvas );
+    canvasWidth = canvas.attr("width");
+    canvasHeight = canvas.attr("height");
+    ctx = canvas[0].getContext('2d');
+    altCanvas = createCanvas( canvasWidth, canvasHeight );
+    altCtx = altCanvas[0].getContext('2d');
+    drawFrame();
+  }
+  function drawFrame()
+  {
+    viewer.draw( altCtx );
+    ctx.drawImage( altCanvas[0], 0, 0 );
+  }
   
+  // data debugging
   if (false)
   {
     var oo = stars;
-    var nZ1 = 0, nZ2 = 0, nZ3 = 0;
     console.log( "n = " + oo.length );
     for (var n=0; n < oo.length; n++)
     {
       var o = oo[n];
-      if (Math.abs(o.x) < 1  &&  Math.abs(o.y) < 1)
-        nZ1 ++;
-      if (Math.abs(o.x) < 2  &&  Math.abs(o.y) < 2)
-        nZ2 ++;
-      if (Math.abs(o.x) < 3  &&  Math.abs(o.y) < 3)
-        nZ3 ++;
     }
-    console.log( "nZ1 = " + nZ1 + ", nZ2 = " + nZ2 + ", nZ3 = " + nZ3 );
   }
   
   galaxies.push({ x: 0, y: 0, z: 0, name: "Milky Way", home: true });
@@ -93,7 +101,7 @@ $(function(){
     var c = document.createElement('canvas');
     c.width = w;
     c.height = h;
-    return c.getContext('2d');
+    return $(c);
   }
   function clone( x )
   {
@@ -141,7 +149,7 @@ $(function(){
      */
     setMode: function( mode )
     {
-      var oldMode = mode;
+      var oldMode = this.mode;
       if (mode == "clusters")
       {
         this.objectList = galaxyClusters;
@@ -161,7 +169,7 @@ $(function(){
         this.objectList = stars;
         this.objectRadius = 0.05;
         this.zoom = 400;
-        this.speedMultiplier = 2;
+        this.speedMultiplier = 4;
       }
       else if (mode == "grid")
       {
@@ -182,8 +190,15 @@ $(function(){
         this.speedMultiplier = 1;
       }
       this.mode = mode;
-      // reset when going down a level
-      if (oldMode == "clusters"  ||  (oldMode == "galaxies"  &&  mode == "stars"))
+      // reset position when changing coordinates
+      function type(m)
+      {
+        if (m == "clusters"  ||  m == "galaxies")
+          return "g";
+        else
+          return m;
+      }
+      if (type(oldMode) != type(mode))
       {
         this.center = clone( center0 );
         this.view = clone( view0 );
@@ -235,7 +250,7 @@ $(function(){
       var fz = this.isometric ? zoom / this.isometricZ : zoom / vz;
       var sx = vx * fz;
       var sy = vy * fz;
-      if (Math.abs(sx) > 2000  ||  Math.abs(sy) > 2000)
+      if (Math.abs(sx) > 3000  ||  Math.abs(sy) > 3000)
         return null;
       sx += canvasWidth/2;
       sy = canvasHeight/2 - sy;
@@ -253,7 +268,7 @@ $(function(){
         if (! s)
           continue;
         var r = this.zoom * this.objectRadius / s[2];
-        if (r > 1000)
+        if (r > 3000)
           continue;
         var mag = (galaxy.mag ? (galaxy.mag) : 10) / s[2];
         if (mag > 0.7)
@@ -261,8 +276,10 @@ $(function(){
         if (mag < 0.1)
           mag = 0.1;
         var fadeClose = 1;
-        if (r > 50)
-          fadeClose = Math.sqrt(50)/Math.sqrt(r);
+        if (r > 40)
+          fadeClose = Math.sqrt(40)/Math.sqrt(r) - 0.08;
+        if (fadeClose < 0.04)
+          continue;
         ctx.globalAlpha = mag * fadeClose;
         if (galaxy.home)
           ctx.fillStyle = "#60ffc0";
@@ -367,11 +384,14 @@ $(function(){
       c[2] += v[axis][2] * dist;
     }
     
-  };  
-    
-  viewer.draw( ctx )
+  };
+  
+  resize();
+  $(window).resize( resize );
+
+  drawFrame();
   var tDraw = setInterval( function() {
-    viewer.draw( ctx )
+    drawFrame();
   }, 50 );
   var tTick = setInterval( function() {
     viewer.tick()
@@ -409,49 +429,77 @@ $(function(){
     }
     movedOverGalaxy( over );
   });
-  $(document).keydown(function(evt){
-    var fast = evt.altKey;
+  
+  function key( keysdown, mult )
+  {
+    var fast = keysdown.k18; // alt
+    var spin = keysdown.k16; // shift
     var base = viewer.speedMultiplier;
     var s = fast ? base*10 : base;
-    var sA = fast ? 0.1 : 0.01;
-    switch( evt.which )
-    {
-    case 37: // left
-      if (evt.shiftKey)
+    var sA = fast ? 0.07 : 0.01;
+    s *= mult;
+    sA *= mult;
+    if (keysdown.k37) // left
+      if (spin)
         viewer.spin( 2, sA );
       else
         viewer.move( 0, -s );
-      break;
-    case 39: // right
-      if (evt.shiftKey)
+    else if (keysdown.k39) // right
+      if (spin)
         viewer.spin( 2, -sA );
       else
         viewer.move( 0, s );
-      break;
-    case 38: // up
-      if (evt.shiftKey)
+    if (keysdown.k38)  // up
+      if (spin)
         viewer.spin( 1, sA );
       else
         viewer.move( 1, s );
-      break;
-    case 40: // down
-      if (evt.shiftKey)
+    else if (keysdown.k40) // down
+      if (spin)
         viewer.spin( 1, -sA );
       else
         viewer.move( 1, -s );
-      break;
-    case 32: // space
-      if (evt.shiftKey)
-        viewer.spin( 0, 0.01 );
+    if (keysdown.k32) // forward (space)
+      if (spin)
+        viewer.spin( 0, sA );
       else
         viewer.move( 2, s );
-      break;
-    case 8: // delete
-      if (evt.shiftKey)
-        viewer.spin( 0, -0.01 );
+    else if (keysdown.k8)  // backward (delete)
+      if (spin)
+        viewer.spin( 0, -sA );
       else
         viewer.move( 2, -s );
-      break;
+  }
+  var keysdown = {};
+  $(document).keydown(function(evt){
+    var idx = "k"+evt.which;
+    if (! keysdown[idx])
+    {
+      keysdown[idx] = true;
+      // just pressing the key imparts some momentum
+      //var single = { };
+      //single[idx] = true;
+      key( keysdown, 0.15 );
+    }
+    return false;
+  });
+  $(document).keyup(function(evt){
+    delete keysdown["k"+evt.which];
+  });
+  {
+    var t0 = new Date().getTime();
+    setInterval( function(){
+      var t1 = new Date().getTime();
+      var dt = (t1 - t0)/1000;
+      t0 = t1;
+      // holding the key down imparts more momentum
+      if (JSON.stringify(keysdown) != "{}")
+        key( keysdown, 1.5 * Math.min(dt,1) );
+    }, 10 );
+  }
+  $(document).keydown(function(evt){
+    switch( evt.which )
+    {
     case "0".charCodeAt(0): // home ('0')
       viewer.center = clone( center0 );
       viewer.view = clone( view0 );
@@ -484,11 +532,11 @@ $(function(){
     if (mode == "very far")
       viewer.zoom = 100;
     else if (mode == "far")
-      viewer.zoom = 200;
+      viewer.zoom = 250;
     else if (mode == "medium")
-      viewer.zoom = 400;
+      viewer.zoom = 500;
     else if (mode == "close")
-      viewer.zoom = 800;
+      viewer.zoom = 1000;
   });
   $(".mode").toggleButton( ["stars","galaxies","clusters","grid"], function(mode){
     viewer.setMode( mode );
@@ -520,7 +568,6 @@ $(function(){
   });
   
 });
-//TODO angular velocity for rotation, not hard steps
 //TODO smooth run back to '0'
-//TODO clustering around Z axis
-
+//TODO galaxy clusters seem suspicious - can't see voids, etc., compare to galaxies
+//TODO page resize
