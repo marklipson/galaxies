@@ -82,9 +82,11 @@
   </h2>
   <div class='body'>
    <p>
-     <button class='mode' title='Choose what level of the universe to explore'>mode</button>
+     scale:<button class='mode' title='Choose what level of the universe to explore'>mode</button>
      zoom:<button class='zoom' title=''>zoom</button>
-     isometric:<button class='isometric'>isometric</button>
+     <br/>
+     coords:<button class='coords'>coords</button>
+     iso:<button class='isometric'>isometric</button>
   <!-- 
      <button class='nearby'>nearby</button>
   -->
@@ -108,12 +110,12 @@
   <div class='body'>
    <p>
      <span class='forMode galaxies'>
-      Each dot represents a galaxy.  Coordinates are based on galactic longitude and latitude, and coordinates are in megaparsecs.
+      Each dot represents a galaxy.  Coordinates are based on galactic longitude and latitude, and are in megaparsecs.
       Nearby galaxies are from <a href='http://edd.ifa.hawaii.edu/'>EDD</a>.
      </span>
      <span class='forMode clusters'>
       Each dot represents one <a target='ref' href='http://en.wikipedia.org/wiki/Galaxy_cluster'>galaxy cluster</a>.
-      Coordinates are based on galactic longitude and latitude, and coordinates is in megaparsecs.
+      Coordinates are based on galactic longitude and latitude, and are measured in megaparsecs.
       Galaxy cluster data is from <a href='http://ned.ipac.caltech.edu/'>NED</a>.
      </span>
      <span class='forMode stars'>
@@ -130,12 +132,14 @@
    <li>space=forward, delete=backward</li>
    <li>hold down shift to turn instead of move</li>
    <li>hold down alt key to move or rotate faster</li>
-   <li>"0" key returns to
+   <li>"0" key returns to 'home', e.g.
     <span class='forMode galaxies'>the Milky Way</span>
     <span class='forMode stars'>Sol</span>
     <span class='forMode clusters'>the local cluster</span>
     <span class='forMode grid'>the origin</span>
    </li>
+   <li>"H" key moves toward 'home'</li>
+   <li>"I" key points toward 'home'</li>
    </p>  
   </div>
 </div>

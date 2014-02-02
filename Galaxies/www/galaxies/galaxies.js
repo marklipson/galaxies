@@ -1,7 +1,8 @@
 $(function(){
 
-  var center0 = [0,0,-0.06];
-  var view0 = [[1,0,0],[0,1,0],[0,0,1]];
+  var d2r = Math.PI / 180;
+  var center0 = [0,-0.06,0];
+  var view0 = [[1,0,0],[0,0,1],[0,1,0]];
   var viewArea = $("#view");
   var canvas;
   var canvasWidth;
@@ -135,8 +136,11 @@ $(function(){
     zoom: 400,
     limitDistance: 500,
     speedMultiplier: 1,
+    showCoords: false,
     bgColor: '#000',
     objectColor: '#fff',
+    homeColor: "#60ffc0",
+    //homeColor: "#e0e080",
     objectRadius: 0.01,
     tPrev: new Date().getTime(),
     displayedObjects: [],
@@ -234,8 +238,11 @@ $(function(){
       av[1] *= f;
       av[2] *= f;
     },
-    toScreenCoords: function( x, y, z )
+    toScreenCoords: function( x, y, z, opts )
     {
+      var imposeLimit = ! opts  ||  opts.imposeLimit;
+      if (this.isometric)
+        imposeLimit = false;
       var c = this.center;
       var v = this.view;
       var zoom = this.zoom;
@@ -243,7 +250,9 @@ $(function(){
       var dy = y - c[1];
       var dz = z - c[2];
       var vz = dx * v[2][0] + dy * v[2][1] + dz * v[2][2];
-      if (vz <= 0  ||  vz > this.limitDistance)
+      if (vz <= 0)
+        return null;
+      if (imposeLimit  &&  vz > this.limitDistance)
         return null;
       var vx = dx * v[0][0] + dy * v[0][1] + dz * v[0][2];
       var vy = dx * v[1][0] + dy * v[1][1] + dz * v[1][2];
@@ -260,6 +269,8 @@ $(function(){
     {
       ctx.fillStyle = this.bgColor;
       ctx.fillRect( 0, 0, canvasWidth, canvasHeight );
+      if (this.showCoords)
+        this.drawCoords( ctx );
       var displayed = [];
       for (var nG=0; nG < this.objectList.length; nG++)
       {
@@ -282,7 +293,7 @@ $(function(){
           continue;
         ctx.globalAlpha = mag * fadeClose;
         if (galaxy.home)
-          ctx.fillStyle = "#60ffc0";
+          ctx.fillStyle = this.homeColor;
         else if (galaxy.color)
           ctx.fillStyle = galaxy.color;
         else
@@ -342,11 +353,64 @@ $(function(){
         var cat = $("<p/>");
         var type = this.mode.replace( /s$/, "" );
         cat.append( "highlighted: " + (g.name?g.name:"anonymous " + type) );
-        cat.append( "<li>coords: (" + g.x.toFixed(2) + "," + g.y.toFixed(2) + "," + g.z.toFixed(2) + ")</li>" );
+        cat.append( "<li>xyz: (" + g.x.toFixed(2) + "," + g.y.toFixed(2) + "," + g.z.toFixed(2) + ")</li>" );
+        if (this.mode == "stars")
+        {
+          var polar = toPolarHuman( g.x, g.y, g.z );
+          if (polar)
+            cat.append( "<li>ra/decl from Sol: " + polar[0] + ", " + polar[1] + "</li>" );
+        }
         cat.append( "<li>dist. from Sol: " + d.toFixed(1) + ((this.mode=='stars')?"pc" + " (" + dly.toFixed(1) + "ly)":"mpc" + " (" + dly.toFixed(1) + "Mly)") + "</li>" );
         $(".status").append( cat );
       }
       this.displayedObjects = displayed;
+    },
+    
+    // draw coordinate system
+    drawCoords: function( ctx )
+    {
+      ctx.strokeStyle = "#008000";
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.4;
+      var r = 1000000;
+      for (var lat=-60; lat <= 90; lat += 30)
+      {
+        var b = lat * d2r;
+        var b0 = (lat-30) * d2r;
+        var cb = Math.cos(b);
+        var sb = Math.sin(b);
+        var cb0 = Math.cos(b0);
+        var sb0 = Math.sin(b0);
+        var p = null;
+        for (var lng=0; lng <= 360; lng += 30)
+        {
+          var a = lng * d2r;
+          var x = cb*Math.cos(a)*r;
+          var y = cb*Math.sin(a)*r;
+          var z = sb*r;
+          var x0 = cb0*Math.cos(a)*r;
+          var y0 = cb0*Math.sin(a)*r;
+          var z0 = sb0*r;
+          var s = this.toScreenCoords( x, y, z, { imposeLimit: false } );
+          var s0 = this.toScreenCoords( x0, y0, z0, { imposeLimit: false } );
+          if (p  &&  s  &&  lat < 90)
+          {
+            ctx.beginPath();
+            ctx.moveTo( p[0], p[1] );
+            ctx.lineTo( s[0], s[1] );
+            ctx.stroke();
+          }
+          if (s0  &&  s)
+          {
+            ctx.beginPath();
+            ctx.moveTo( s0[0], s0[1] );
+            ctx.lineTo( s[0], s[1] );
+            ctx.stroke();
+          }
+          p = s;
+        }
+      }
+      ctx.globalAlpha = 1;
     },
     
     // rotate the viewpoint
@@ -385,6 +449,54 @@ $(function(){
     }
     
   };
+  
+  function vecSub( u, v )
+  {
+    return [ u[0]-v[0], u[1]-v[1], u[2]-v[2] ];
+  }
+  function vecLength( v )
+  {
+    return Math.sqrt( v[0]*v[0] + v[1]*v[1] + v[2]*v[2] );
+  }
+  function normalize( v )
+  {
+    var d = vecLength( v );
+    v[0] /= d;
+    v[1] /= d;
+    v[2] /= d;
+    return d;
+  }
+  function vecCross( u, v )
+  {
+    return [ u[1]*v[2] - u[2]*v[1], u[2]*v[0] - u[0]*v[2], u[0]*v[1] - u[1]*v[0] ];
+  }
+  
+  function toPolarHuman( x, y, z )
+  {
+    var v = [x,y,z];
+    var r = normalize( v );
+    if (r == 0)
+      return null;
+    var a = Math.atan2( v[1], v[0] ) / d2r;
+    var b = Math.asin( v[2] ) / d2r;
+    if (a < 0)
+      a += 360;
+    a /= 15;
+    var h = Math.floor( a );
+    a = (a-h)*24;
+    var m = Math.floor( a );
+    var sB = (b >= 0) ? "N" : "S";
+    if (sB == "S")
+      b = -b;
+    var bD = Math.floor( b );
+    var bM = Math.floor( (b - bD) * 60 );
+    var out =
+    [
+      h + "h" + Math.floor(m/10) + m%10 + "m",
+      bD + sB + Math.floor(bM/10) + bM%10
+    ];
+    return out;
+  }
   
   resize();
   $(window).resize( resize );
@@ -500,10 +612,44 @@ $(function(){
   $(document).keydown(function(evt){
     switch( evt.which )
     {
-    case "0".charCodeAt(0): // home ('0')
+    case "0".charCodeAt(0): // go home ('0')
       viewer.center = clone( center0 );
       viewer.view = clone( view0 );
       viewer.velocity = [0,0,0];
+      break;
+    case "H".charCodeAt(0): // move toward home
+      var t = center0;
+      var c = viewer.center;
+      var d = vecSub( t, c );
+      var r = normalize( d );
+      var mag = (r < 10) ? viewer.speedMultiplier : viewer.speedMultiplier * 10;
+      mag *= 0.03;
+      viewer.velocity[0] += d[0] * mag;
+      viewer.velocity[1] += d[1] * mag;
+      viewer.velocity[2] += d[2] * mag;
+      break;
+    case "I".charCodeAt(0): // point toward home
+      // vZ = vector toward home
+      var t = center0;
+      var c = viewer.center;
+      var vZ = vecSub( t, c );
+      var rZ = normalize( vZ );
+      if (rZ < 0.001)
+        break;
+      var vY = [0,1,0];
+      var vX = vecCross( vY, vZ );
+      var rX = normalize( vX );
+      var vY;
+      if (rX < 0.01)
+      {
+        vX = [1,0,0];
+        vY = vecCross( vZ, vX );
+        normalize( vY );
+        vX = vecCross( vY, vZ );
+      }
+      else
+        vY = vecCross( vZ, vX );
+      viewer.view = [ vX, vY, vZ ];
       break;
     }
     return false;
@@ -543,6 +689,9 @@ $(function(){
   });
   $(".isometric").toggleButton( ["off","on"], function(mode){
     viewer.isometric = (mode == "on");
+  });
+  $(".coords").toggleButton( ["off","on"], function(mode){
+    viewer.showCoords = (mode == "on");
   });
   /*
   $(".nearby").click(function(){
