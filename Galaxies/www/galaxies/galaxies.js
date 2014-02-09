@@ -28,6 +28,7 @@ $(function(){
       else
         viewer.highlightObject = null;
     }
+    // mouse move: highlight objects
     canvas.mousemove(function(evt){
       var x = evt.clientX;
       var y = evt.clientY;
@@ -49,6 +50,15 @@ $(function(){
         }
       }
       movedOverGalaxy( over );
+    });
+    // double click: point toward that point
+    canvas.dblclick(function(evt){
+      var pt;
+      var o = viewer.highlightObject;
+      if (! o)
+        return;
+      pt = [o.x,o.y,o.z];
+      viewer.turnToward( pt );
     });
   }
   function drawFrame()
@@ -81,8 +91,9 @@ $(function(){
     }
   }
   
+  // patch up object lists
   galaxies.push({ x: 0, y: 0, z: 0, name: "Milky Way", home: true });
-  stars.push({ x: 0, y: 0, z: 0, name: "Sol", home: true });
+  stars.push({ x: 0, y: 0, z: 0, M: 4.83, name: "Sol", home: true });
   for (var n=0; n < galaxyClusters.length; n++)
   {
     var gc = galaxyClusters[n];
@@ -206,11 +217,11 @@ $(function(){
     homeColor: "#60ffc0",
     //homeColor: "#e0e080",
     objectRadius: 0.01,
-    objectRadiusMult: 1,
+    objectRadiusMult: 0.012,
     tPrev: new Date().getTime(),
     displayedObjects: [],
     highlightObject: null,
-    objectList: galaxies,
+    objectList: stars,
     mode: "galaxies",
     searchValue: null,
     searchHits: 0,
@@ -354,14 +365,16 @@ $(function(){
       {
         var galaxy = this.objectList[nG];
         var match = false;
+        var gMag = galaxy.mag ? galaxy.mag : 0.2;
         if (searchValue  &&  galaxy.name  &&  galaxy.name.toLowerCase().indexOf( searchValue ) != -1)
         {
           match = true;
           nHits ++;
-          searchM += mag;
-          searchC[0] += galaxy.x * mag;
-          searchC[1] += galaxy.y * mag;
-          searchC[2] += galaxy.z * mag;
+          var m = 
+          searchM += gMag;
+          searchC[0] += galaxy.x * gMag;
+          searchC[1] += galaxy.y * gMag;
+          searchC[2] += galaxy.z * gMag;
         }
         var s = this.toScreenCoords( galaxy.x, galaxy.y, galaxy.z );
         if (! s)
@@ -372,7 +385,7 @@ $(function(){
         var r = rO / s[2];
         if (r > 3000)
           continue;
-        var mag = (galaxy.mag ? galaxy.mag : 0.2) / Math.sqrt(s[2]);
+        var mag = gMag / Math.sqrt(s[2]);
         if (mag > 0.7)
           mag = 0.7;
         if (mag < 0.3)
@@ -609,8 +622,44 @@ $(function(){
       else
         vU = vecCross( vR, vI );
       var ideal = [ vR, vU, vI ];
-      this.view = ideal;
-    }
+      if (pct)
+      {
+        var a = pct;
+        var b = 1 - a;
+        var o = this.view;
+        var dot = o[2][0]*ideal[2][0] + o[2][1]*ideal[2][1] + o[2][2]*ideal[2][2];
+        if (dot < -0.999)
+        {
+          this.rotate( 2, 0.07 );
+          o = this.view;
+        }
+        var pX = [a*ideal[0][0]+b*o[0][0],a*ideal[0][1]+b*o[0][1],a*ideal[0][2]+b*o[0][2]];
+        var rX = normalize( pX );
+        var pY = [a*ideal[1][0]+b*o[1][0],a*ideal[1][1]+b*o[1][1],a*ideal[1][2]+b*o[1][2]];
+        var pZ = vecCross( pY, pX );
+        normalize( pZ );
+        pY = vecCross( pX, pZ );
+        this.view = [ pX, pY, pZ ];
+        return dot;
+      }
+      else
+        this.view = ideal;
+    },
+    
+    turnToward: function( target )
+    {
+      clearInterval( this._turning );
+      var run = 0;
+      var dot = 0;
+      var tmr = setInterval( function(){
+        dot = viewer.pointToward( target, (dot < -0.8  ||  dot > 0.8) ? 0.15 : 0.1 );
+        run ++;
+        if (run >= 100  ||  dot > 0.996)
+          clearInterval( tmr );
+      }, 20 );
+      this._turning = tmr;
+    },
+    _turning: 0
     
   };
   
@@ -647,7 +696,7 @@ $(function(){
       a += 360;
     a /= 15;
     var h = Math.floor( a );
-    a = (a-h)*24;
+    a = (a-h)*60;
     var m = Math.floor( a );
     var sB = (b >= 0) ? "N" : "S";
     if (sB == "S")
@@ -666,7 +715,6 @@ $(function(){
   resize();
   $(window).resize( resize );
 
-  drawFrame();
   var tDraw = setInterval( function() {
     drawFrame();
   }, 50 );
@@ -721,9 +769,7 @@ $(function(){
     {
       keysdown[idx] = true;
       // just pressing the key imparts some momentum
-      //var single = { };
-      //single[idx] = true;
-      key( keysdown, 0.15 );
+      key( keysdown, 0.08 );
     }
     return false;
   });
@@ -766,7 +812,7 @@ $(function(){
       break;
     case "I".charCodeAt(0): // point toward home
       // vZ = vector toward home
-      viewer.pointToward( [0,0,0] );
+      viewer.turnToward( [0,0,0] );
       break;
     }
     return false;
@@ -809,22 +855,19 @@ $(function(){
   $(".isometric").toggleButton( ["off","on"], function(mode){
     viewer.isometric = (mode == "on");
   });
-  $(".coords").toggleButton( ["off","on","fine"], function(mode){
+  $(".coords").toggleButton( ["off","on"], function(mode){
     if (mode == "fine")
-      viewer.showCoords = 5;
+      viewer.showCoords = 3.75;
     else if (mode == "on")
-      viewer.showCoords = 10;
+      viewer.showCoords = 7.5;
     else
       viewer.showCoords = 0;
   });
   $(".search").click( function(){
     viewer.searchValue = prompt( "Search for:" );
     $(this).text( "search" + (viewer.searchValue?":"+viewer.searchValue:"") );
-    setTimeout( function(){
-      var t = viewer.searchCenter;
-      if (viewer.searchValue  &&  t)
-        viewer.pointToward( t );
-    }, 500 );
+    if (viewer.searchValue  &&  viewer.searchCenter)
+      viewer.turnToward( viewer.searchCenter );
   });
   /*
   $(".nearby").click(function(){
