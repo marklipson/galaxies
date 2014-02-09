@@ -26,6 +26,19 @@ $(function(){
     viewer.draw( altCtx );
     ctx.drawImage( altCanvas[0], 0, 0 );
   }
+  function rgbToColor( rgb )
+  {
+    var rr = Math.min(Math.round(rgb[0]),255).toString(16);
+    if (rr.length < 2)
+      rr = "0" + rr;
+    var gg = Math.min(Math.round(rgb[1]),255).toString(16);
+    if (gg.length < 2)
+      gg = "0" + gg;
+    var bb = Math.min(Math.round(rgb[2]),255).toString(16);
+    if (bb.length < 2)
+      bb = "0" + bb;
+    return "#" + rr + gg + bb;
+  }
   
   // data debugging
   if (false)
@@ -55,16 +68,36 @@ $(function(){
     // see http://www.vendian.org/mncharity/dir3/starcolor/
     var letters = "OBAFGKM";
     var colors = ["#9bb0ff","#aabfff","#cad7ff","#f8f7ff","#fff4ea","#ffd2a1","#ffcc6f"];
+    var rgb = [ [0x9b,0xb0,255],[166,0xbf,255],[0xca,0xd7,255],[0xf8,0xf7,255],[255,0xf4,0xea],[255,0xd2,0xa1],[255,0xcc,0x6f] ];
+    var brMax = 100;
     for (var n=0; n < stars.length; n++)
     {
-      if (! stars[n].s)
-        continue;
-      var spectrum = stars[n].s;
-      var which = letters.indexOf( spectrum.charAt(0) );
-      if (which >= 0)
-        stars[n].color = colors[which];
+      var br = 1;
       if (stars[n].M)
-        stars[n].mag = Math.exp( stars[n].mag );
+      {
+        br = 10*Math.exp( -stars[n].M );
+        stars[n].mag = br;
+        if (br > brMax)
+          br = brMax;
+        if (br < 0.01)
+          br = 0.01;
+        stars[n].r = br;
+      }
+      else
+        stars[n].mag = 1;
+      if (stars[n].s)
+      {
+        var spectrum = stars[n].s;
+        var which = letters.indexOf( spectrum.charAt(0) );
+        if (which >= 0)
+        {
+          var c = rgb[ which ];
+          var mC = Math.sqrt( c[0]*c[0] + c[1]*c[1] + c[2]*c[2] );
+          mC = Math.sqrt(3) * (144 + br*111/brMax) / mC;
+          c = [ c[0]*mC, c[1]*mC, c[2]*mC ];
+          stars[n].color = rgbToColor( c );
+        }
+      }
     }
   }
   
@@ -134,7 +167,7 @@ $(function(){
     isometricZ: 20,
     showNearby: false,
     zoom: 400,
-    limitDistance: 500,
+    limitDistance: 1500,
     speedMultiplier: 1,
     showCoords: false,
     bgColor: '#000',
@@ -142,11 +175,15 @@ $(function(){
     homeColor: "#60ffc0",
     //homeColor: "#e0e080",
     objectRadius: 0.01,
+    objectRadiusMult: 1,
     tPrev: new Date().getTime(),
     displayedObjects: [],
     highlightObject: null,
     objectList: galaxies,
     mode: "galaxies",
+    searchValue: null,
+    searchHits: 0,
+    searchCenter: null,
     
     /**
      * Choose which scale we're viewing.
@@ -157,21 +194,21 @@ $(function(){
       if (mode == "clusters")
       {
         this.objectList = galaxyClusters;
-        this.objectRadius = 0.4;
+        this.objectRadius = 8;
         this.zoom = 200;
         this.speedMultiplier = 10;
       }
       else if (mode == "galaxies")
       {
         this.objectList = galaxies;
-        this.objectRadius = 0.01;
+        this.objectRadius = 0.2;
         this.zoom = 400;
         this.speedMultiplier = 1;
       }
       else if (mode == "stars")
       {
         this.objectList = stars;
-        this.objectRadius = 0.05;
+        this.objectRadius = 1;
         this.zoom = 400;
         this.speedMultiplier = 4;
       }
@@ -272,25 +309,44 @@ $(function(){
       if (this.showCoords)
         this.drawCoords( ctx );
       var displayed = [];
+      var radiusMult = this.zoom * this.objectRadiusMult;
+      var defaultObjectRadius = this.objectRadius * radiusMult;
+      var nHits = 0;
+      var searchValue = this.searchValue ? this.searchValue.toLowerCase() : null;
+      var searchC = [0,0,0];
+      var searchM = 0;
       for (var nG=0; nG < this.objectList.length; nG++)
       {
         var galaxy = this.objectList[nG];
         var s = this.toScreenCoords( galaxy.x, galaxy.y, galaxy.z );
         if (! s)
           continue;
-        var r = this.zoom * this.objectRadius / s[2];
+        var rO = defaultObjectRadius;
+        if (galaxy.r)
+          rO = galaxy.r * radiusMult;
+        var r = rO / s[2];
         if (r > 3000)
           continue;
-        var mag = (galaxy.mag ? (galaxy.mag) : 10) / s[2];
+        var mag = (galaxy.mag ? galaxy.mag : 0.2) / s[2];
         if (mag > 0.7)
           mag = 0.7;
-        if (mag < 0.1)
-          mag = 0.1;
+        if (mag < 0.3)
+          mag = 0.3;
         var fadeClose = 1;
         if (r > 40)
           fadeClose = Math.sqrt(40)/Math.sqrt(r) - 0.08;
         if (fadeClose < 0.04)
           continue;
+        var match = false;
+        if (searchValue  &&  galaxy.name  &&  galaxy.name.toLowerCase().indexOf( searchValue ) != -1)
+        {
+          match = true;
+          nHits ++;
+          searchM += mag;
+          searchC[0] += galaxy.x * mag;
+          searchC[1] += galaxy.y * mag;
+          searchC[2] += galaxy.z * mag;
+        }
         ctx.globalAlpha = mag * fadeClose;
         if (galaxy.home)
           ctx.fillStyle = this.homeColor;
@@ -307,7 +363,7 @@ $(function(){
           ctx.closePath();
           ctx.fill();
         }
-        if (r > 1.5)
+        if (r > 1.5  ||  mag > 0.5)
           displayed.push({ galaxy: galaxy, x: s[0], y: s[1], r: r, distance: s[2] });
         ctx.globalAlpha = 1;
         if (galaxy === this.highlightObject)
@@ -319,7 +375,21 @@ $(function(){
           ctx.closePath();
           ctx.stroke();
         }
+        if (match)
+        {
+          ctx.strokeStyle = "#80c0ff";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc( s[0], s[1], r+4, 0, 6.2832, false );
+          ctx.closePath();
+          ctx.stroke();
+        }
       }
+      this.searchHits = nHits;
+      if (searchM)
+        this.searchCenter = [ searchC[0]/searchM, searchC[1]/searchM, searchC[2]/searchM ];
+      else
+        this.searchCenter = null;
       if (this.showNearby)
       {
         var tbl = nearbyTable;
@@ -345,6 +415,8 @@ $(function(){
       }
       var c = this.center;
       $(".status").text( "your position: (" + c[0].toFixed(2) + "," + c[1].toFixed(2) + "," + c[2].toFixed(2) + ")")
+      if (this.searchValue)
+        $(".status").append( "<br/>search: " + this.searchHits + " object(s) found" );
       if (this.highlightObject)
       {
         var g = this.highlightObject;
@@ -361,6 +433,8 @@ $(function(){
             cat.append( "<li>ra/decl from Sol: " + polar[0] + ", " + polar[1] + "</li>" );
         }
         cat.append( "<li>dist. from Sol: " + d.toFixed(1) + ((this.mode=='stars')?"pc" + " (" + dly.toFixed(1) + "ly)":"mpc" + " (" + dly.toFixed(1) + "Mly)") + "</li>" );
+        if (g.M)
+          cat.append( "<li title='absolute magnitude'>M: " + g.M.toFixed(2) + "</li>" );
         $(".status").append( cat );
       }
       this.displayedObjects = displayed;
@@ -446,6 +520,31 @@ $(function(){
       c[0] += v[axis][0] * dist;
       c[1] += v[axis][1] * dist;
       c[2] += v[axis][2] * dist;
+    },
+    
+    /**
+     * Point toward a given coordinate.
+     */
+    pointToward: function( target )
+    {
+      var c = this.center;
+      var vI = vecSub( target, c );
+      var rI = normalize( vI );
+      if (rI < 0.001)
+        return;
+      var vU = [0,0,1];
+      var vR = vecCross( vI, vU );
+      var rR = normalize( vR );
+      if (rR < 0.01)
+      {
+        vR = [1,0,0];
+        vU = vecCross( vI, vR );
+        normalize( vU );
+        vR = vecCross( vU, vI );
+      }
+      else
+        vU = vecCross( vR, vI );
+      this.view = [ vR, vU, vI ];
     }
     
   };
@@ -623,6 +722,10 @@ $(function(){
       var d = vecSub( t, c );
       var r = normalize( d );
       var mag = (r < 10) ? viewer.speedMultiplier : viewer.speedMultiplier * 10;
+      if (r > 100)
+        mag *= 10;
+      if (r < 1)
+        mag *= 0.1;
       mag *= 0.03;
       viewer.velocity[0] += d[0] * mag;
       viewer.velocity[1] += d[1] * mag;
@@ -630,26 +733,7 @@ $(function(){
       break;
     case "I".charCodeAt(0): // point toward home
       // vZ = vector toward home
-      var t = center0;
-      var c = viewer.center;
-      var vZ = vecSub( t, c );
-      var rZ = normalize( vZ );
-      if (rZ < 0.001)
-        break;
-      var vY = [0,1,0];
-      var vX = vecCross( vY, vZ );
-      var rX = normalize( vX );
-      var vY;
-      if (rX < 0.01)
-      {
-        vX = [1,0,0];
-        vY = vecCross( vZ, vX );
-        normalize( vY );
-        vX = vecCross( vY, vZ );
-      }
-      else
-        vY = vecCross( vZ, vX );
-      viewer.view = [ vX, vY, vZ ];
+      viewer.pointToward( center0 );
       break;
     }
     return false;
@@ -684,6 +768,14 @@ $(function(){
     else if (mode == "close")
       viewer.zoom = 1000;
   });
+  $(".radii").toggleButton( ["medium","tiny","huge"], function(mode){
+    if (mode == "tiny")
+      viewer.objectRadiusMult = .01;
+    else if (mode == "medium")
+      viewer.objectRadiusMult = 0.02;
+    else if (mode == "huge")
+      viewer.objectRadiusMult = 0.04;
+  });
   $(".mode").toggleButton( ["stars","galaxies","clusters","grid"], function(mode){
     viewer.setMode( mode );
   });
@@ -692,6 +784,15 @@ $(function(){
   });
   $(".coords").toggleButton( ["off","on"], function(mode){
     viewer.showCoords = (mode == "on");
+  });
+  $(".search").click( function(){
+    viewer.searchValue = prompt( "Search for:" );
+    $(this).text( "search" + (viewer.searchValue?":"+viewer.searchValue:"") );
+    setTimeout( function(){
+      var t = viewer.searchCenter;
+      if (viewer.searchValue  &&  t)
+        viewer.pointToward( t );
+    }, 1000 );
   });
   /*
   $(".nearby").click(function(){
