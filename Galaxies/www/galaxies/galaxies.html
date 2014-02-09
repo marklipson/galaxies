@@ -20,6 +20,12 @@
     width: 300px;
     padding: 8px;
   }
+  .panel.minimized {
+    opacity: 0.2;
+  }
+  .panel.minimized:hover {
+    opacity: 0.4;
+  }
   .panel a {
     color: #ccf
   }
@@ -68,29 +74,61 @@
   .forMode {
     display: none;
   }
+  .toggleButton {
+  }
+  .tb-next {
+    font-size: 75%;
+    color: #808080;
+  }
+  .toolbar {
+    float: right;
+    margin-right: 8px;
+  }
+  .toolbar button {
+    color: #808080;
+    font-weight: bold;
+  }
+  button {
+    cursor: hand;
+  }
+  button:hover {
+    color: #0000c0;
+  }
+  .toolbar button:hover {
+    color: #008000;
+    font-weight: bold;
+  }
 </style>
 <script type="text/javascript" src="jquery.js">//</script>
 <script type="text/javascript" src="jquery.mousewheel.js">//</script>
-<script type="text/javascript" src="galaxy-database-xyz.js">//</script>
-<script type="text/javascript" src="galaxies.js">//</script>
-<script type="text/javascript" src="galaxy-clusters.js">//</script>
 <script type="text/javascript" src="stars.js">//</script>
+<script type="text/javascript" src="planets.js">//</script>
+<script type="text/javascript" src="galaxy-database-xyz.js">//</script>
+<!-- <script type="text/javascript" src="galaxy-clusters.js">//</script> -->
+<script type="text/javascript" src="galaxies.js">//</script>
 
 <div id="controls" class="panel">
   <h2>
     <div class='minimize'>-</div>
+    <div class='toolbar'>
+      <button class='search' title='Search for objects'>search</button>
+    </div>
     tools
   </h2>
   <div class='body'>
    <p>
-     scale:<button class='mode' title='Choose what level of the universe to explore'>mode</button>
-     zoom:<button class='zoom' title=''>zoom</button>
-     radii:<button class='radii' title=''>...</button>
+     scale:<button class='mode' title='Choose what level of the universe to explore'>...</button>
+     <span class='forMode planets'>
+     time:<button class='timeControl' title='Start/stop time'>...</button>
+     </span>
      <br/>
-     coords:<button class='coords'>coords</button>
-     iso:<button class='isometric'>isometric</button>
+     zoom:<button class='zoom' title='Look at a smaller area of the sky'>zoom</button>
+     radii:<button class='radii' title='Show larger or smaller representations of objects'>...</button>
      <br/>
-     <button class='search'>search</button>
+     coords:<button class='coords' title='Show equatorial coordinates'>coords</button>
+     <!-- 
+     iso:<button class='isometric' title='Isometric rendering (under construction)'>isometric</button>
+     -->
   <!-- 
      <button class='nearby'>nearby</button>
   -->
@@ -107,6 +145,7 @@
   <h2>
     <div class='minimize'>-</div>
     <span class='forMode galaxies'>NEARBY GALAXIES</span>
+    <span class='forMode planets'>PLANETS</span>
     <span class='forMode stars'>STARS</span>
     <span class='forMode clusters'>GALAXY CLUSTERS</span>
     <span class='forMode grid'>TEST GRID</span>
@@ -116,6 +155,9 @@
      <span class='forMode galaxies'>
       Each dot represents a galaxy.  Coordinates are based on galactic longitude and latitude, and are in megaparsecs.
       Nearby galaxies are from <a href='http://edd.ifa.hawaii.edu/'>EDD</a>.
+     </span>
+     <span class='forMode planets'>
+      The solar system.  Click the "scale" button to see nearby stars.
      </span>
      <span class='forMode clusters'>
      <strong style="color:#ff8080; font-weight: bold; margin-left: 24px">** under construction **</strong>
@@ -127,6 +169,7 @@
      <span class='forMode stars'>
       Coordinates are equatorial, and coordinates are in parsecs.
       Stars are from the <a target='ref' href='http://www.astronexus.com/node/34'">HYG</a> database.
+      Click the "scale" button to see nearby galaxies.
      </span>
      <span class='forMode grid'>
        This is a test of the rendering logic.
@@ -142,6 +185,7 @@
    <li>"0" key snaps back to 'home', e.g.
     <span class='forMode galaxies'>the Milky Way</span>
     <span class='forMode stars'>Sol</span>
+    <span class='forMode planets'>the Sun</span>
     <span class='forMode clusters'>the local cluster</span>
     <span class='forMode grid'>the origin</span>
    </li>

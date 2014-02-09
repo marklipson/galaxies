@@ -55,8 +55,12 @@ public class EDD_Galaxies
       String name2 = cols[5];
       if (name.isEmpty())
         name = name2;
+      else
+        name += " (" + name2 + ")";
       double ra = Double.parseDouble( cols[7] )*15 * d2r;
       double decl = Double.parseDouble( cols[8] ) * d2r;
+      //if (name.contains("Rigel"))
+      //  System.out.println( "Rigel: " + ra/d2r + ", " + decl/d2r );
       double D = Double.parseDouble( cols[9] );
       double absMag = Double.parseDouble( cols[11] );
       String spectrum = (cols.length <= 12) ? "" : cols[12];
@@ -73,13 +77,12 @@ public class EDD_Galaxies
       double y = sin(ra) * cos(decl) * D;
       double z =           sin(decl) * D;
       String extra = "";
-// works but file is very large
       if (! name.isEmpty())
         extra = ",name:'" + name.replace("'","\\'") + "'";
       if (! spectrum.isEmpty())
         extra += ",s:'" + spectrum.substring( 0, 1 ).toUpperCase() + "'";
       extra += ",M:" + String.format( "%.1f", absMag );
-      w.write( String.format( "{x:%.2f,y:%.2f,z:%.2f" + extra + "},\n", x, y, z ) );
+      w.write( String.format( "{x:%.3f,y:%.3f,z:%.3f" + extra + "},\n", x, y, z ) );
     }
     w.write( "];\n" );
     r.close();
@@ -87,7 +90,7 @@ public class EDD_Galaxies
   }
 
   /**
-   * Galaxy data from:
+   * Nearby galaxy data from:
    *   http://edd.ifa.hawaii.edu/dfirst.php?
    *   
    *  0   1   2   3 4 5 6 7 8 91011 12  13  14   15
@@ -112,6 +115,8 @@ public class EDD_Galaxies
       double D = Double.parseDouble( cols[1] );
       double gLon = Double.parseDouble( cols[14] ) * d2r;
       double gLat = Double.parseDouble( cols[15] ) * d2r;
+      String strM = cols[7];
+      double M = strM.isEmpty() ? Double.NaN : Double.parseDouble( strM );
       String name = cols[27];
       String cluster = (cols.length <= 48) ? null : cols[48];
       double x = cos(gLon) * cos(gLat) * D;
@@ -145,6 +150,7 @@ public class EDD_Galaxies
     w.write( "// Source: http://ned.ipac.caltech.edu/services/nbasq/\n" );
     w.write( "// positions are in megaparsecs, in galactic coordinates\n" );
     w.write( "var galaxyClusters = [\n" );
+    int count = 0;
     while ((line = r.readLine()) != null)
     {
       String cols[] = line.split( "\\|" );
@@ -155,6 +161,9 @@ public class EDD_Galaxies
       double gLat = Double.parseDouble( cols[3] ) * d2r;
       String name = cols[1];
       double D = z_to_Mpc( redshift );
+      if (D > 1400)
+        continue;
+      count ++;
       double x = cos(gLon) * cos(gLat) * D;
       double y = sin(gLon) * cos(gLat) * D;
       double z =             sin(gLat) * D;
@@ -167,6 +176,7 @@ public class EDD_Galaxies
     w.write( "];\n" );
     r.close();
     w.close();
+    System.out.println( count );
   }
 
   
