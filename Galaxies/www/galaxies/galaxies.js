@@ -58,13 +58,24 @@ $(function(){
       if (! o)
         return;
       pt = [o.x,o.y,o.z];
-      viewer.turnToward( pt );
+      var c = viewer.center;
+      var d = Math.sqrt( (pt[0]-c[0])*(pt[0]-c[0]) + (pt[1]-c[1])*(pt[1]-c[1]) + (pt[2]-c[2])*(pt[2]-c[2]));
+      if (viewer.mode == "stars"  &&  d < 3  &&  o.planets)
+      {
+        // close, and centered - go to planet mode
+        viewer.setMode( "planets", o );
+        ($(".mode").data("changeValue"))( 0 );
+      }
+      else
+        viewer.turnToward( pt );
     });
   }
   function drawFrame()
   {
+    //var t0 = new Date().getTime();
     viewer.draw( altCtx );
     ctx.drawImage( altCanvas[0], 0, 0 );
+    //var tE = (new Date().getTime() - t0)/1000;
   }
   function rgbToColor( rgb )
   {
@@ -80,21 +91,128 @@ $(function(){
     return "#" + rr + gg + bb;
   }
   
-  // data debugging
-  if (false)
+  // correlate exoplanets to parent stars
+  function correlateExoplanets( exoplanets, stars )
   {
-    var oo = stars;
-    console.log( "n = " + oo.length );
-    for (var n=0; n < oo.length; n++)
+    var t0 = new Date().getTime();
+    var mFound = 0;
+    var dMin = Math.cos( 0.01*d2r );
+    for (var n=0; n < exoplanets.length; n++)
     {
-      var o = oo[n];
+      var pl = exoplanets[n];
+      var pl0, plR;
+      if (pl.sPos)
+      {
+        pl0 = [ pl.sPos[0], pl.sPos[1], pl.sPos[2] ];
+        plR = normalize( pl0 );
+      }
+      else
+      {
+        var cb = Math.cos( pl.sPolar.b );
+        pl0 =
+        [
+          Math.cos( pl.sPolar.a ) * cb,
+          Math.sin( pl.sPolar.a ) * cb,
+          Math.sin( pl.sPolar.b )
+        ];
+      }
+      var q = [ pl0[0] > 0, pl0[1] > 0, pl0[2] > 0 ];
+      var best = null;
+      var dBest = 0;
+      for (var nS=0; nS < stars.length; nS++)
+      {
+        var s = stars[nS];
+        if (q[2] != (s.z > 0))
+          continue;
+        if (q[1] != (s.y > 0))
+          continue;
+        if (q[0] != (s.x > 0))
+          continue;
+        var s0 = [s.x,s.y,s.z];
+        var sR = normalize( s0 );
+        var d = pl0[0]*s0[0] + pl0[1]*s0[1] + pl0[2]*s0[2];
+        if (d < dMin)
+          continue;
+        if (plR)
+        {
+          var dr = Math.abs( plR - sR ) / Math.max( plR, sR );
+          if (dr > 0.4)
+            continue;
+        }
+        if (! best  ||  d >= dBest)
+        {
+          // same distance?  take brightest star at the location
+          //TODO mark 2nd star as binary companion
+          if (best  &&  d == dBest)
+          {
+            if (s.M < best.M)
+              continue;
+          }
+          best = s;
+          dBest = d;
+        }
+      }
+      if (! best)
+      {
+        // no distance - skip this one
+        if (pl.sPolar)
+          continue;
+        // synthesize the star
+        best =
+        {
+          name: pl.sName,
+          x: pl.sPos[0],
+          y: pl.sPos[1],
+          z: pl.sPos[2],
+          M: 5 // assume it's pretty dim, since it's not in our catalog
+        };
+        stars.push( best );
+      }
+      pl.star = best;
+      best.radius = pl.sR;
+      if (! best.name  ||  best.name.indexOf( pl.sName ) == -1)
+      {
+        if (best.name)
+          best.name += " (" + pl.sName + ")";
+        else
+          best.name = pl.sName;
+      }
+      if (! best.planets)
+        best.planets = [];
+      best.planets.push( pl );
+      mFound ++;
     }
+    var tE = (new Date().getTime() - t0)/1000;
+    console.log( "correlation took " + tE );
+    //console.log( "found stars for " + mFound + " out of " + exoplanets.length );
   }
+  
+  /*
+  {
+    // eliminate some stars
+    console.log( "nStars = " + stars.length );
+    for (var n=0; n < stars.length; n++)
+    {
+      var s = stars[n];
+      if (s.planets)
+        continue;
+      var d = normalize([s.x,s.y,s.z]);
+      if (d < 100)
+        continue;
+      if (s.M > 2)
+      {
+        stars.splice( n, 1 );
+        n --;
+      }
+    }
+    console.log( "nStars = " + stars.length );
+  }
+  */
   
   // patch up object lists
   galaxies.push({ x: 0, y: 0, z: 0, name: "Milky Way", home: true });
-  stars.push({ x: 0, y: 0, z: 0, M: 4.83, name: "Sol", home: true });
-  //stars.push({ x: 0, y: 0, z: 0, name: "Sun", alpha: 1, color: "#ffffe0", r: 0.01 });
+  var sol = { x: 0, y: 0, z: 0, M: 4.83, name: "Sol", home: true, planets: [{},{},{}] };
+  stars.push( sol );
   if (typeof galaxyClusters == "undefined")
     galaxyClusters = [{ x:0, y:0, z:0 }];
   for (var n=0; n < galaxyClusters.length; n++)
@@ -113,7 +231,7 @@ $(function(){
     var letters = "OBAFGKM";
     var colors = ["#9bb0ff","#aabfff","#cad7ff","#f8f7ff","#fff4ea","#ffd2a1","#ffcc6f"];
     var rgb = [ [0x9b,0xb0,255],[166,0xbf,255],[0xca,0xd7,255],[0xf8,0xf7,255],[255,0xf4,0xea],[255,0xd2,0xa1],[255,0xcc,0x6f] ];
-    var brMax = 100;
+    var brMax = 500;
     for (var n=0; n < stars.length; n++)
     {
       var br = 1;
@@ -210,6 +328,7 @@ $(function(){
     isometric: false,
     isometricZ: 20,
     showNearby: false,
+    showExo: 0,
     zoom: 400,
     limitDistance: 1500,
     speedMultiplier: 1,
@@ -229,19 +348,28 @@ $(function(){
     searchValue: null,
     searchHits: 0,
     searchCenter: null,
+    // saved settings for each mode
+    savedPerMode: {},
     
     /**
      * Choose which scale we're viewing.
      */
-    setMode: function( mode )
+    setMode: function( mode, starForPlanets )
     {
       var oldMode = this.mode;
+      // save viewpoint for old mode
+      var save = this.savedPerMode[ oldMode ];
+      if (! save)
+        save = (this.savedPerMode[ oldMode ] = {});
+      save.c = clone( this.center );
+      save.v = clone( this.view );
       if (mode == "clusters")
       {
         this.objectList = galaxyClusters;
         this.objectRadius = 8;
         this.zoom = 200;
         this.speedMultiplier = 10;
+        this.limitDistance = 1500;
         this.fuzzy = true;
       }
       else if (mode == "galaxies")
@@ -250,6 +378,7 @@ $(function(){
         this.objectRadius = 0.2;
         this.zoom = 400;
         this.speedMultiplier = 1;
+        this.limitDistance = 1500;
         this.fuzzy = true;
       }
       else if (mode == "stars")
@@ -258,15 +387,46 @@ $(function(){
         this.objectRadius = 1;
         this.zoom = 400;
         this.speedMultiplier = 4;
+        this.limitDistance = 1000;
         this.fuzzy = false;
       }
       else if (mode == "planets")
       {
+        if (starForPlanets)
+          planetsControl.setStar( starForPlanets );
+        else
+        {
+          var best;
+          var dBest;
+          var c = this.center;
+          for (var n=0; n < stars.length; n++)
+          {
+            var s = stars[n];
+            if (! s.planets)
+              continue;
+            var dx = s.x - c[0];
+            if (dx > 10)
+              continue;
+            var dy = s.y - c[1];
+            if (dy > 10)
+              continue;
+            var d = dx*dx + dy*dy + (s.z-c[2])*(s.z-c[2]);
+            if (! best  ||  d < dBest)
+            {
+              best = s;
+              dBest = d;
+            }
+          }
+          if (best)
+            planetsControl.setStar( best );
+        }
         this.objectList = planets;
         this.objectRadius = 1;
         this.zoom = 400;
         this.speedMultiplier = 4;
+        this.limitDistance = 50000; // in au
         this.fuzzy = false;
+        this.searchValue = "";
       }
       else if (mode == "grid")
       {
@@ -287,6 +447,9 @@ $(function(){
         this.speedMultiplier = 1;
         this.fuzzy = false;
       }
+      //HACK default center should also be part of the viewer
+      center0 = (mode=="planets") ? [0,-2,1.0] : [0,-0.1,0];
+      view0 = (mode=="planets") ? [[1,0,0],[0,0.291647,0.956526],[0,0.966526,-0.291647]] : [[1,0,0],[0,0,1],[0,1,0]];
       this.mode = mode;
       // reset position when changing coordinates
       function type(m)
@@ -297,13 +460,18 @@ $(function(){
           return m;
       }
       if (oldMode == "planets"  &&  mode != "planets")
-        planets_pause( true );
+        planetsControl.pause( true );
       if (oldMode != "planets"  &&  mode == "planets")
-        planets_pause( false );
+        planetsControl.pause( false );
+      var restore = this.savedPerMode[ mode ];
+      if (restore)
+      {
+        this.center = clone( restore.c );
+        this.view = clone( restore.v );
+      }
+      else
       if (type(oldMode) != type(mode))
       {
-        center0 = (mode=="planets") ? [0,-1.5,0.5] : [0,-0.1,0];
-        view0 = (mode=="planets") ? [[1,0,0],[0,0.291647,0.956526],[0,0.966526,-0.291647]] : [[1,0,0],[0,0,1],[0,1,0]];
         this.center = clone( center0 );
         this.view = clone( view0 );
       }
@@ -341,29 +509,31 @@ $(function(){
     toScreenCoords: function( x, y, z, opts )
     {
       var imposeLimit = ! opts  ||  opts.imposeLimit;
-      if (this.isometric)
-        imposeLimit = false;
+      //if (this.isometric)
+      //  imposeLimit = false;
       var c = this.center;
       var v = this.view;
       var zoom = this.zoom;
       var dx = x - c[0];
       var dy = y - c[1];
       var dz = z - c[2];
-      var vz = dx * v[2][0] + dy * v[2][1] + dz * v[2][2];
+      var v2 = v[2];
+      var vz = dx * v2[0] + dy * v2[1] + dz * v2[2];
       if (vz <= 0)
         return null;
       if (imposeLimit  &&  vz > this.limitDistance)
         return null;
-      var vx = dx * v[0][0] + dy * v[0][1] + dz * v[0][2];
-      var vy = dx * v[1][0] + dy * v[1][1] + dz * v[1][2];
-      var fz = this.isometric ? zoom / this.isometricZ : zoom / vz;
+      var v0 = v[0], v1 = v[1];
+      var vx = dx * v0[0] + dy * v0[1] + dz * v0[2];
+      var vy = dx * v1[0] + dy * v1[1] + dz * v1[2];
+      var fz = /*this.isometric ? zoom / this.isometricZ :*/ zoom / vz;
       var sx = vx * fz;
       var sy = vy * fz;
       if (Math.abs(sx) > 3000  ||  Math.abs(sy) > 3000)
         return null;
       sx += canvasWidth/2;
       sy = canvasHeight/2 - sy;
-      return [sx,sy,this.isometric?this.isometricZ : vz];
+      return [sx,sy,/*this.isometric?this.isometricZ :*/ vz];
     },
     draw: function( ctx )
     {
@@ -401,6 +571,7 @@ $(function(){
       var searchValue = this.searchValue ? this.searchValue.toLowerCase() : null;
       var searchC = [0,0,0];
       var searchM = 0;
+      var rMin = (this.mode == "galaxies") ? 0 : 0.25;
       for (var nObj=0; nObj < this.objectList.length; nObj++)
       {
         var nG = order[ nObj ];
@@ -424,7 +595,16 @@ $(function(){
         if (galaxy.r)
           rO = galaxy.r * radiusMult;
         var r = rO / s[2];
+        if (r < rMin)
+          if (! match)
+            if (! this.showExo  ||  ! galaxy.planets)
+              continue;
         if (r > 3000)
+          continue;
+        var rp = r + 4;
+        if (s[0] - rp > canvasWidth  ||  s[0] + rp < 0)
+          continue;
+        if (s[1] - rp > canvasHeight  ||  s[1] + rp < 0)
           continue;
         var mag = gMag / Math.sqrt(s[2]);
         if (mag > 0.7)
@@ -442,13 +622,15 @@ $(function(){
           ctx.globalAlpha = galaxy.alpha;
         else
           ctx.globalAlpha = mag * fadeClose;
+        var fill;
         if (galaxy.home)
-          ctx.fillStyle = this.homeColor;
+          fill = this.homeColor;
         else if (galaxy.color)
-          ctx.fillStyle = galaxy.color;
+          fill = galaxy.color;
         else
-          ctx.fillStyle = this.objectColor;
-        if (r <= 0.6)
+          fill = this.objectColor;
+        ctx.fillStyle = fill;
+        if (r <= 0.75)
           ctx.fillRect( s[0], s[1], 1, 1 );
         else
         {
@@ -492,12 +674,22 @@ $(function(){
           ctx.closePath();
           ctx.stroke();
         }
+        // stars with exoplanets
+        if (this.showExo  &&  galaxy.planets  &&  galaxy.planets.length >= this.showExo)
+        {
+          ctx.strokeStyle = "#00ffc0";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc( s[0], s[1], r+4, 0, 6.2832, false );
+          ctx.closePath();
+          ctx.stroke();
+        }
         if (match)
         {
           ctx.strokeStyle = "#80c0ff";
-          ctx.lineWidth = 2;
+          ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.arc( s[0], s[1], r+4, 0, 6.2832, false );
+          ctx.arc( s[0], s[1], r+3, 0, 6.2832, false );
           ctx.closePath();
           ctx.stroke();
         }
@@ -559,8 +751,7 @@ $(function(){
         var dI = Math.sqrt( (c[0]-g.x)*(c[0]-g.x)+(c[1]-g.y)*(c[1]-g.y)+(c[2]-g.z)*(c[2]-g.z) );
         var dIly = dI*u2mult;
         var cat = $("<p/>");
-        var type = this.mode.replace( /s$/, "" );
-        cat.append( "highlighted: " + (g.name?g.name:"anonymous " + type) );
+        cat.append( "highlighted: " + (g.name?g.name:"(anonymous)") );
         cat.append( "<li>xyz: (" + g.x.toFixed(2) + "," + g.y.toFixed(2) + "," + g.z.toFixed(2) + ")</li>" );
         if (this.mode == "stars")
         {
@@ -571,7 +762,11 @@ $(function(){
         cat.append( "<li>dist. from Sol: " + d.toFixed(1) + unit1 + " (" + dly.toFixed(1) + unit2 + ")" + "</li>" );
         cat.append( "<li>dist. from you: " + dI.toFixed(1) + unit1 + " (" + dIly.toFixed(1) + unit2 + ")" + "</li>" );
         if (g.M)
-          cat.append( "<li title='absolute magnitude'>M: " + g.M.toFixed(2) + "</li>" );
+          cat.append( "<li title='absolute magnitude'>abs mag (M): " + g.M.toFixed(2) + "</li>" );
+        if (g.radius)
+          cat.append( "<li title='radius'>radius: : " + (g.radius/109.2).toFixed(2) + " solar radii</li>" );
+        if (g.planets)
+          cat.append( "<li title=''>" + g.planets.length + " planet" + ((g.planets.length==1)?"":"s") + "</li>" );
         $(".status").append( cat );
       }
       this.displayedObjects = displayed;
@@ -717,7 +912,7 @@ $(function(){
       var tmr = setInterval( function(){
         dot = viewer.pointToward( target, (dot < -0.8  ||  dot > 0.8) ? 0.15 : 0.1 );
         run ++;
-        if (run >= 100  ||  dot > 0.996)
+        if (run >= 120  ||  dot > 0.998)
           clearInterval( tmr );
       }, 20 );
       this._turning = tmr;
@@ -774,6 +969,7 @@ $(function(){
     return out;
   }
   
+  planetsControl.setStar( sol );
   viewer.setMode( "planets" );
   resize();
   $(window).resize( resize );
@@ -863,6 +1059,8 @@ $(function(){
       var c = viewer.center;
       var d = vecSub( t, c );
       var r = normalize( d );
+      if (viewer.mode == "galaxies")
+        r *= 10;
       var mag = (r < 10) ? viewer.speedMultiplier : viewer.speedMultiplier * 10;
       if (r > 100)
         mag *= 10;
@@ -877,6 +1075,13 @@ $(function(){
       // vZ = vector toward home
       viewer.turnToward( [0,0,0] );
       break;
+    case 27:  // escape - exit planet mode
+      if (viewer.mode == "planets")
+      {
+        viewer.setMode( "stars" );
+        ($(".mode").data("changeValue"))( 1 );
+      }
+      break;
     }
     return false;
   });
@@ -884,51 +1089,74 @@ $(function(){
   /**
    * Set up a button to toggle through a list of values.
    */
-  $.fn.toggleButton = function( names, onChanged )
+  $.fn.toggleButton = function( names, onChanged, initial )
   {
     var btn = this;
-    btn.addClass( ".toggleButton" );
-    btn.data( "index", 0 );
-    btn.click(function(){
-      var nCurrent = btn.data( "index" );
-      nCurrent = (nCurrent + 1) % names.length;
+    if (! initial)
+      initial = 0;
+    function changeValue( nCurrent )
+    {
       btn.data( "index", nCurrent );
       var newValue = names[ nCurrent ];
-      var nextValue = names[ (nCurrent + 1) % names.length ];
-      btn.html( newValue + "<span class='tb-next'> &gt;&gt; " + nextValue + "</span>" );
-      onChanged( newValue );
+      var prev = "", next = "";
+      if (nCurrent + 1 < names.length)
+      {
+        var nextValue = names[ (nCurrent + 1) % names.length ];
+        next = "<span class='tb-next'> &gt;&gt; " + nextValue + "</span>";
+      }
+      if (nCurrent > 0)
+      {
+        var prevValue = names[ (nCurrent + names.length - 1) % names.length ];
+        prev = "<span class='tb-prev'>" + prevValue + " &lt;&lt; </span>";
+      }
+      btn.html( prev + newValue + next );
+    }
+    btn.data( "changeValue", function(n){
+      changeValue( n );
+    });
+    btn.addClass( ".toggleButton" );
+    btn.click(function(evt){
+      var nCurrent = btn.data( "index" );
+      if ($(evt.target).hasClass("tb-prev"))
+        nCurrent = (nCurrent + names.length - 1) % names.length;
+      else
+        nCurrent = (nCurrent + 1) % names.length;
+      changeValue( nCurrent );
+      onChanged( names[ nCurrent ] );
     });
     // set initial value
-    btn.html( names[0] + "<span class='tb-next'> &gt;&gt; " + names[1] + "</span>" );
-    onChanged( names[0] );
+    changeValue( initial );
+    onChanged( names[initial] );
   };
-  $(".zoom").toggleButton( ["far","close"], function(mode){
+  $(".zoom").toggleButton( ["close","far"], function(mode){
     if (mode == "far")
       viewer.zoom = 500;
     else if (mode == "close")
       viewer.zoom = 1000;
-  });
-  $(".radii").toggleButton( ["large","small"], function(mode){
+  }, 1);
+  $(".radii").toggleButton( ["small","large"], function(mode){
     if (mode == "small")
       viewer.objectRadiusMult = 0.012;
     else if (mode == "large")
       viewer.objectRadiusMult = 0.02;
-  });
-  $(".mode").toggleButton( ["planets","stars","galaxies","stars"/*,"clusters"*/], function(mode){
+  }, 1);
+  $(".mode").toggleButton( ["planets","stars","galaxies"/*,"clusters"*/], function(mode){
     viewer.setMode( mode );
   });
-  $(".timeControl").toggleButton( ["fast","slow","pause","slow","fast","faster"], function(v){
+  $(".timeControl").toggleButton( ["pause","1d/s","1w/s","1mo/s","3mo/s"], function(v){
     var scale = 1;
-    if (v == "faster")
-      scale = 86400*30*2;
-    else if (v == "fast")
+    if (v == "3mo/s")
+      scale = 86400*30*3;
+    else if (v == "1mo/s")
       scale = 86400*30;
-    else if (v == "slow")
+    else if (v == "1w/s")
       scale = 86400*7;
+    else if (v == "1d/s")
+      scale = 86400;
     else if (v == "pause")
       scale = 0;
-    planets_setTimeScale( scale );
-  });
+    planetsControl.setTimeScale( scale );
+  }, 1);
   $(".isometric").toggleButton( ["off","on"], function(mode){
     viewer.isometric = (mode == "on");
   });
@@ -940,11 +1168,21 @@ $(function(){
     else
       viewer.showCoords = 0;
   });
+  $(".showExo").toggleButton( ["off","1+","2+"], function(mode){
+    if (mode == "1+")
+      viewer.showExo = 1;
+    else if (mode == "2+")
+      viewer.showExo = 2;
+    else
+      viewer.showExo = 0;
+  });
   $(".search").click( function(){
     viewer.searchValue = prompt( "Search for:" );
     $(this).text( "search" + (viewer.searchValue?":"+viewer.searchValue:"") );
-    if (viewer.searchValue  &&  viewer.searchCenter)
-      viewer.turnToward( viewer.searchCenter );
+    setTimeout( function(){
+      if (viewer.searchValue  &&  viewer.searchCenter)
+        viewer.turnToward( viewer.searchCenter );
+    }, 250 );
   });
   /*
   $(".nearby").click(function(){
@@ -975,7 +1213,35 @@ $(function(){
     viewer.spin( 2, -evt.deltaX/2000 );
     viewer.spin( 1, evt.deltaY/2000 );
   });
+
+  function showMessage( msg )
+  {
+    var w = $("#message");
+    if (msg)
+    {
+      w.html( msg );
+      w.show();
+    }
+    else
+      w.hide();
+  }
+
+  showMessage( "<br/>Loading..." );
+  setTimeout( function(){
+    correlateExoplanets( exoplanets, stars );
+    showMessage();
+  }, 100 );
+  
 });
+//TODO startup too slow - correspond stars with planets more quickly or do this offline
+//TODO too slow from too many stars
+
+//TODO after visiting exoplanets, return to same star coords
+//TODO text for exoplanets is off
+//TODO hints for star in exoplanet mode are getting lost
+//TODO show more exoplanet metadata
+
+//TODO planets.js depends on stars.js - ugly
 //TODO planet artwork
 //TODO galaxy artwork
 //TODO twist gesture to rotate around Y axis

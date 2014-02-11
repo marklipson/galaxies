@@ -27,6 +27,129 @@ public class EDD_Galaxies
     return z * c / H0;
   }
   
+  private static String jsonVal( String name, String value )
+  {
+    return jsonVal( true, name, value );
+  }
+  private static String jsonVal( String name, double value, int prec )
+  {
+    return jsonVal( true, name, value, prec );
+  }
+  private static String jsonVal( String name, boolean value )
+  {
+    return jsonVal( true, name, value );
+  }
+  private static String jsonVal( boolean comma, String name, String value )
+  {
+    if (value != null)
+      return (comma?",":"") + name + ":\"" + value.replace("\\","\\\\").replace("\"", "\\\"") + "\"";
+    else
+      return "";
+  }
+  private static String jsonVal( boolean comma, String name, double value, int prec )
+  {
+    return (comma?",":"") + name + ":" + String.format( "%." + prec + "f", value );
+  }
+  private static String jsonVal( boolean comma, String name, boolean value )
+  {
+    return (comma?",":"") + name + ":" + value;
+  }
+
+  /**
+   * Exoplanet data...
+   * 
+   * http://exoplanets.org/table
+   * 
+   * NAME,MSINI,A,PER,ECC,OM,T0,STAR,RSTAR,R,DIST,RA,DEC,BINARY,BINARYURL,BINARYREF
+   * ,mjupiter,au,day,,deg,jd,,rsun,rjupiter,pc,hr,deg,,,
+   */
+  public static void process_EXO_data() throws Exception
+  {
+    File input = new File( base, "exoplanets.csv" );
+    File output = new File( input.getParentFile(), "exoplanets.js" );
+    BufferedReader r = new BufferedReader( new FileReader( input ) );
+    FileWriter w = new FileWriter( output );
+    String line;
+    w.write( "// Source: http://exoplanets.org/table\n" );
+    w.write( "var exoplanets = [\n" );
+    while ((line = r.readLine()) != null)
+    {
+      String cols[] = line.split( "\\s*,\\s*" );
+      int n = 0;
+      String name = cols[n++];
+      // this one is a duplicate
+      if (name.equals( "HD 62509 b" ))
+        continue;
+      String msini = cols[n++];
+      String a = cols[n++];
+      if (! a.matches( "[0-9\\.]+" ))
+        continue;
+      String per = cols[n++];
+      String ecc = cols[n++];
+      String om = cols[n++];
+      String t0 = cols[n++];
+      String star = cols[n++];
+      String rstar = cols[n++];
+      String rad = cols[n++];
+      String dist = cols[n++];
+      String ra = cols[n++];
+      String dec = cols[n++];
+      String binary = cols[n++];
+      String row = "{";
+      // planet's name
+      row += jsonVal( false, "pName", name );
+      // planet's radius
+      double pR;
+      if (rad.matches( "[0-9\\.]+" ))
+        // given in Jupiter radii
+        pR = Double.valueOf( rad );
+      else if (msini.matches( "[0-9\\.]+" ))
+        // "given" as a proportion of jupiter's mass
+        pR = Math.pow( Double.valueOf( msini ) * 1.15, 0.3333 );
+      else
+        continue;
+      pR *= 11.209; // convert to earth radii
+      row += jsonVal( "pR", pR, 2 );
+      // associated star
+      // - radius (given in sun radii - convert to earth radii)
+      if (! rstar.isEmpty())
+        row += jsonVal( "sR", Double.valueOf(rstar)*109.2, 2 );
+      // - name
+      row += jsonVal( "sName", star );
+      row += jsonVal( "sBinary", binary.equals("1") );
+      // TODO information about binary star orbit, i.e. distance between stars, orbital period and eccentricity
+      // - position
+      double _a = Double.valueOf(ra)*15 * d2r;
+      double _b = Double.valueOf(dec) * d2r;
+      if (dist.isEmpty())
+      {
+        row += String.format(",sPolar:{a:%.5f,b:%.5f}", _a, _b );
+      }
+      else
+      {
+        double sD = Double.valueOf(dist);
+        double x = cos(_a) * cos(_b) * sD;
+        double y = sin(_a) * cos(_b) * sD;
+        double z =           sin(_b) * sD;
+        row += String.format(",sPos:[%.5f,%.5f,%.5f]", x, y, z );
+      }
+      // orbital elements
+      row += jsonVal( "oeA", Double.valueOf(a), 3 );     // (au)
+      row += jsonVal( "oePeriod", Double.valueOf(per), 3 ); // (days)
+      if (! ecc.isEmpty())
+        row += jsonVal( "oeE", Double.valueOf(ecc), 3 );
+      if (! om.isEmpty())
+        row += jsonVal( "oePeri", Double.valueOf(om), 3 ); // from angle node to peri
+      if (! t0.isEmpty())
+        row += jsonVal( "oeT0", Double.valueOf(t0), 3 );   // time at peri
+      row += "},\n";
+      w.write( row );
+    }
+    w.write( "];\n" );
+    r.close();
+    w.close();
+  }
+  
   /**
    * Star data...
    * 
@@ -64,14 +187,19 @@ public class EDD_Galaxies
       double D = Double.parseDouble( cols[9] );
       double absMag = Double.parseDouble( cols[11] );
       String spectrum = (cols.length <= 12) ? "" : cols[12];
+      // eliminate a few
+      // at great distance the distances are very rough estimates
       if (D > 20000)
         continue;
       if (name.isEmpty())
       {
-        if (D > 100  &&  absMag < 0)
+        /*
+        // unnamed, far away, really dim
+        if (D > 200  &&  absMag > 3)
           continue;
-        if (D > 200  &&  absMag < 1)
+        if (D > 300  &&  absMag > 2)
           continue;
+        */
       }
       double x = cos(ra) * cos(decl) * D;
       double y = sin(ra) * cos(decl) * D;
@@ -184,8 +312,9 @@ public class EDD_Galaxies
   {
     try
     {
+      process_EXO_data();
       //process_EDD_data();
-      process_NED_data();
+      //process_NED_data();
       //process_HYG_data();
     }
     catch( Exception x )

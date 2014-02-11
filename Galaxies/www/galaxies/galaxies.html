@@ -39,6 +39,22 @@
   .panel hr {
     border-color: #888;
   }
+  #message {
+    display: none;
+    top: 40%;
+    bottom: 40%;
+    left: 30%;
+    right: 30%;
+    width: 40%;
+    z-index: 5;
+    text-align: center;
+    background-color: #5a5;
+    color: #333;
+    border: solid 2px #cec;
+    padding: 16px 8px;
+    font-weight: bold;
+    font-size: 24px;
+  }
   #controls {
     right: 4px;
     font-size: 13px;
@@ -76,36 +92,42 @@
   }
   .toggleButton {
   }
-  .tb-next {
-    font-size: 75%;
+  .tb-next, .tb-prev {
+    font-size: 80%;
     color: #808080;
+    font-weight: bold;
   }
-  .toolbar {
-    float: right;
-    margin-right: 8px;
+  .tb-next:hover, .tb-prev:hover {
+    color: #0080c0;
   }
   .toolbar button {
     color: #808080;
-    font-weight: bold;
   }
   button {
     cursor: hand;
   }
   button:hover {
-    color: #0000c0;
   }
   .toolbar button:hover {
     color: #008000;
     font-weight: bold;
+  }
+  .toolbar {
+    float: right;
+    margin-right: 8px;
   }
 </style>
 <script type="text/javascript" src="jquery.js">//</script>
 <script type="text/javascript" src="jquery.mousewheel.js">//</script>
 <script type="text/javascript" src="stars.js">//</script>
 <script type="text/javascript" src="planets.js">//</script>
+<script type="text/javascript" src="exoplanets.js">//</script>
 <script type="text/javascript" src="galaxy-database-xyz.js">//</script>
 <!-- <script type="text/javascript" src="galaxy-clusters.js">//</script> -->
 <script type="text/javascript" src="galaxies.js">//</script>
+
+<div id="message" class="panel">
+</div>
 
 <div id="controls" class="panel">
   <h2>
@@ -119,13 +141,20 @@
    <p>
      scale:<button class='mode' title='Choose what level of the universe to explore'>...</button>
      <span class='forMode planets'>
-     time:<button class='timeControl' title='Start/stop time'>...</button>
+       <br/>
+       time:<button class='timeControl' title='Start/stop time'>...</button>
      </span>
      <br/>
      zoom:<button class='zoom' title='Look at a smaller area of the sky'>zoom</button>
      radii:<button class='radii' title='Show larger or smaller representations of objects'>...</button>
      <br/>
-     coords:<button class='coords' title='Show equatorial coordinates'>coords</button>
+     coords:<button class='coords' title='Show equatorial coordinates'>...</button>
+     <span class='forMode stars'>
+       exo:<button class='showExo' title='Show stars with known planets'>...</button>
+     </span>
+     <span class='forMode planets'>
+       exo:<button class='showExo' title='Show stars with known planets'>...</button>
+     </span>
      <!-- 
      iso:<button class='isometric' title='Isometric rendering (under construction)'>isometric</button>
      -->
@@ -157,7 +186,10 @@
       Nearby galaxies are from <a href='http://edd.ifa.hawaii.edu/'>EDD</a>.
      </span>
      <span class='forMode planets'>
-      The solar system.  Click the "scale" button to see nearby stars.
+      Close of view of star showing its solar system.
+      You might need to move back a little to see all the planets.
+      To speed up animation, use time control on right.
+      To visit other stars, first click the "scale" button on the right.
      </span>
      <span class='forMode clusters'>
      <strong style="color:#ff8080; font-weight: bold; margin-left: 24px">** under construction **</strong>
@@ -167,6 +199,8 @@
       Galaxy cluster data is from <a href='http://ned.ipac.caltech.edu/'>NED</a>.
      </span>
      <span class='forMode stars'>
+      Each dot is a star.  Hover mouse to see details.
+      When returning to "planets" view, the solar system for the nearest star with known planets will be shown.
       Coordinates are equatorial, and coordinates are in parsecs.
       Stars are from the <a target='ref' href='http://www.astronexus.com/node/34'">HYG</a> database.
       Click the "scale" button to see nearby galaxies.
