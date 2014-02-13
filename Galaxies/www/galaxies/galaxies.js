@@ -98,7 +98,7 @@ $(function(){
   {
     var t0 = new Date().getTime();
     var mFound = 0;
-    var dMin = Math.cos( 0.01*d2r );
+    var dMin = Math.cos( 0.021*d2r );
     for (var n=0; n < exoplanets.length; n++)
     {
       var pl = exoplanets[n];
@@ -754,7 +754,7 @@ $(function(){
         var dI = Math.sqrt( (c[0]-g.x)*(c[0]-g.x)+(c[1]-g.y)*(c[1]-g.y)+(c[2]-g.z)*(c[2]-g.z) );
         var dIly = dI*u2mult;
         var cat = $("<p/>");
-        cat.append( "highlighted: " + (g.name?g.name:"(anonymous)") );
+        cat.append( "highlighted: " + (g.name?g.name:"") );
         cat.append( "<li>xyz: (" + g.x.toFixed(2) + "," + g.y.toFixed(2) + "," + g.z.toFixed(2) + ")</li>" );
         if (this.mode == "stars")
         {
