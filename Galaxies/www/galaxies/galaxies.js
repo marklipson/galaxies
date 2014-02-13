@@ -9,6 +9,7 @@ $(function(){
   var canvasHeight;
   var ctx, altCtx, altCanvas;
   var nearbyTable = [];
+  var frameRate = 10;
 
   function resize()
   {
@@ -72,10 +73,11 @@ $(function(){
   }
   function drawFrame()
   {
-    //var t0 = new Date().getTime();
+    var t0 = new Date().getTime();
     viewer.draw( altCtx );
     ctx.drawImage( altCanvas[0], 0, 0 );
-    //var tE = (new Date().getTime() - t0)/1000;
+    var tE = (new Date().getTime() - t0)/1000;
+    frameRate = frameRate * 0.94 + tE * 0.06;
   }
   function rgbToColor( rgb )
   {
@@ -571,7 +573,7 @@ $(function(){
       var searchValue = this.searchValue ? this.searchValue.toLowerCase() : null;
       var searchC = [0,0,0];
       var searchM = 0;
-      var rMin = (this.mode == "galaxies") ? 0 : 0.25;
+      var rMin = (this.mode == "galaxies") ? 0 : 0.30;
       for (var nObj=0; nObj < this.objectList.length; nObj++)
       {
         var nG = order[ nObj ];
@@ -726,6 +728,7 @@ $(function(){
       $(".status").text( "your position: (" + c[0].toFixed(2) + "," + c[1].toFixed(2) + "," + c[2].toFixed(2) + ")")
       if (this.searchValue)
         $(".status").append( "<br/>search: " + this.searchHits + " object(s) found" );
+      $(".status").append( "<br/><em class='frameRate'>frame rate: " + (1/frameRate).toFixed(1) + "</em>" );
       if (this.highlightObject)
       {
         var unit1, unit2, u2mult = 3.26163344;
@@ -976,7 +979,7 @@ $(function(){
 
   var tDraw = setInterval( function() {
     drawFrame();
-  }, 50 );
+  }, 25 );
   var tTick = setInterval( function() {
     viewer.tick()
   }, 10 );
@@ -1156,7 +1159,7 @@ $(function(){
     else if (v == "pause")
       scale = 0;
     planetsControl.setTimeScale( scale );
-  }, 1);
+  }, 2);
   $(".isometric").toggleButton( ["off","on"], function(mode){
     viewer.isometric = (mode == "on");
   });
@@ -1233,18 +1236,10 @@ $(function(){
   }, 100 );
   
 });
-//TODO startup too slow - correspond stars with planets more quickly or do this offline
-//TODO too slow from too many stars
-
-//TODO after visiting exoplanets, return to same star coords
-//TODO text for exoplanets is off
-//TODO hints for star in exoplanet mode are getting lost
 //TODO show more exoplanet metadata
-
-//TODO planets.js depends on stars.js - ugly
+//TODO startup too slow - correspond stars with planets more quickly or do this offline
 //TODO planet artwork
 //TODO galaxy artwork
 //TODO twist gesture to rotate around Y axis
-//TODO isometric mode is of questionable benefit
 //TODO galaxy clusters are incomplete - maybe that's just the way NED is?
 //TODO constellation lines?
