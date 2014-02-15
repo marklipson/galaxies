@@ -1,126 +1,4 @@
-<style>
-  body {
-    font-family: arial, helvetic, sans-serif;
-    color: #c0c0c0;
-    background-color: #333;
-  }
-  .type {
-    text-decoration: underline;
-    margin-left: 8px;
-  }
-  .panel {
-    position: fixed;
-    top: 4px;
-    z-index: 3;
-    opacity: 0.8;
-    border: solid 2px #ccc;
-    background-color: #666;
-    overflow: auto;
-    color: #ccc;
-    width: 300px;
-    padding: 8px;
-    border-radius: 4px;
-  }
-  .panel.minimized {
-    opacity: 0.2;
-  }
-  .panel.minimized:hover {
-    opacity: 0.4;
-  }
-  .panel a {
-    color: #ccf
-  }
-  .panel a:visited {
-    color: #ecf
-  }
-  .panel h2 {
-    margin: 0;
-    font-size: 22px;
-  }
-  .panel hr {
-    border-color: #888;
-  }
-  #message {
-    display: none;
-    top: 40%;
-    bottom: 40%;
-    left: 30%;
-    right: 30%;
-    width: 40%;
-    z-index: 5;
-    text-align: center;
-    background-color: #5a5;
-    color: #333;
-    border: solid 2px #cec;
-    padding: 16px 8px;
-    font-weight: bold;
-    font-size: 24px;
-  }
-  #controls {
-    right: 4px;
-    font-size: 13px;
-  }
-  #notes {
-    left: 4px;
-    max-height: 400px;
-  }
-  #view {
-    position: fixed;
-    left: 0px;
-    right: 0px;
-    top: 0px;
-    bottom: 0px;
-    width: 100%;
-    height: 100%;
-  }
-  .status {
-    color: #c0c0c0;
-  }
-  .frameRate {
-    color: #888;
-  }
-  .minimize {
-    float: right;
-    background-color: #777;
-    font-size: 16px;
-    padding: 0 8px;
-    border: solid 2px #ccc;
-    font-weight: bold;
-    cursor: pointer;
-   }
-  .minimize:hover {
-    background-color: #aaa;
-  }
-  .forMode {
-    display: none;
-  }
-  .toggleButton {
-  }
-  .tb-next, .tb-prev {
-    font-size: 80%;
-    color: #808080;
-    font-weight: bold;
-  }
-  .tb-next:hover, .tb-prev:hover {
-    color: #0080c0;
-  }
-  .toolbar button {
-    color: #808080;
-  }
-  button {
-    cursor: hand;
-  }
-  button:hover {
-  }
-  .toolbar button:hover {
-    color: #008000;
-    font-weight: bold;
-  }
-  .toolbar {
-    float: right;
-    margin-right: 8px;
-  }
-</style>
+<link rel="stylesheet" media="screen" href="galaxies.css"/>
 <script type="text/javascript" src="jquery.js">//</script>
 <script type="text/javascript" src="jquery.mousewheel.js">//</script>
 <script type="text/javascript" src="stars.js">//</script>
@@ -154,10 +32,10 @@
      <br/>
      coords:<button class='coords' title='Show equatorial coordinates'>...</button>
      <span class='forMode stars'>
-       exo:<button class='showExo' title='Show stars with known planets'>...</button>
+       exoplanets:<button class='showExo' title='Show stars with known planets'>...</button>
      </span>
      <span class='forMode planets'>
-       exo:<button class='showExo' title='Show stars with known planets'>...</button>
+       exoplanets:<button class='showExo' title='Show stars with known planets'>...</button>
      </span>
      <!-- 
      iso:<button class='isometric' title='Isometric rendering (under construction)'>isometric</button>
@@ -178,7 +56,7 @@
   <h2>
     <div class='minimize'>-</div>
     <span class='forMode galaxies'>NEARBY GALAXIES</span>
-    <span class='forMode planets'>PLANETS</span>
+    <span class='forMode planets'>PLANETS of <span class='selectedStar'></span></span>    
     <span class='forMode stars'>STARS</span>
     <span class='forMode clusters'>GALAXY CLUSTERS</span>
     <span class='forMode grid'>TEST GRID</span>
@@ -190,7 +68,7 @@
       Nearby galaxies are from <a href='http://edd.ifa.hawaii.edu/'>EDD</a>.
      </span>
      <span class='forMode planets'>
-      Close of view of star showing its solar system.
+      Close up view of star showing its solar system.
       You might need to move back a little to see all the planets.
       To speed up animation, use time control on right.
       To visit other stars, first click the "scale" button on the right.
@@ -213,22 +91,59 @@
        This is a test of the rendering logic.
      </span>
    </p>
-   <p>
+   <div class='key-reference'>
    Keys:
-   <li>arrow keys move</li>
-   <li>space=forward, delete=backward</li>
-   <li>hold down shift to turn instead of move</li>
-   <li>hold down alt key to move or rotate faster</li>
-   <li>double click to center on an object</li>
-   <li>"0" key snaps back to 'home', e.g.
-    <span class='forMode galaxies'>the Milky Way</span>
-    <span class='forMode stars'>Sol</span>
-    <span class='forMode planets'>the Sun</span>
-    <span class='forMode clusters'>the local cluster</span>
-    <span class='forMode grid'>the origin</span>
-   </li>
-   <li>"H" key moves toward 'home'</li>
-   <li>"I" key turns toward 'home'</li>
-   </p>  
+    <ul>
+     <li>arrow keys move</li>
+     <li>space=forward, delete=backward</li>
+     <li>hold down shift to turn instead of move</li>
+     <li>hold down alt key to move or rotate faster</li>
+     <li>double click to center on an object</li>
+     <li>"0" key snaps back to 'home', e.g.
+      <span class='forMode galaxies'>the Milky Way</span>
+      <span class='forMode stars'>Sol</span>
+      <span class='forMode planets'>the Sun</span>
+      <span class='forMode clusters'>the local cluster</span>
+      <span class='forMode grid'>the origin</span>
+     </li>
+     <li>"H" key moves toward 'home'</li>
+     <li>"I" key turns toward 'home'</li>
+     <li>two-finger drag on trackpad: rotate</li>
+    </ul>
+   </div>
+   <p class='etc'>
+     <a class='popup' href='etc'>notes</a>
+   </p>
+  </div>
+  <div class='message-content' id='etc'>
+    <h2>Notes</h2>
+    <li>Please don't try to visit other stars while you are looking at a solar system!  When you are
+      at this scale the stars are very far away.  If you switch into "stars" mode,
+      by clicking the button in the top right that reads "planets &gt;&gt; stars", the distances are
+      much more manageable.</li>
+    <li>The arrow keys, the space bar and the delete button will move you around in space.  The longer
+      you hold down a button the farther you will go.  If you become impatient with how long it takes
+      to reach other stars, hold down the "alt" key at the same time as the other keys.  You can also
+      move forward and right at the same time, for instance, by holding down both keys at once.</li>
+    <li>Please notice that the buttons in the top right sometimes have two different sides you can
+      click on.  For instance, clicking on the left side of the time scale button slows time down and
+      clicking on the right side speeds it up.</li>
+    <li>One of the more intriguing features is the ability to see solar systems other than our own.
+      To visit other stars, please first leave "planets" mode by clicking the 'scale' button that
+      shows "planets >> stars".  Now, click on the 'exoplanets' button to highlight stars with known
+      planets.  Now you can speed off toward one of them, using the arrow keys and the space bar.
+      To move substantially faster, hold down the "alt" key while you are pressing the other keys.
+      Once you get close enough you can double click on the star and it will 'zoom in' to show you
+      the planets.</li>
+
+    <p/>
+    <h2>Errata</h2>
+    <li>Displayed radii, even in 'small' mode are much larger than they would be
+      if you were to look up at the sky.  In most cases, every object would occupy a single pixel if
+      drawn accurately, and that wouldn't be very exciting.  In some solar systems, the magnification is
+      a bit too much.</li>
+    <li>Alpha Centauri can be found by searching for "alpha cen".  To find Gliese 581, search for "GJ 581".
+      Star names have been taken literally from their various sources, and have not yet been 'enhanced' for
+      easier searching.</li>
   </div>
 </div>

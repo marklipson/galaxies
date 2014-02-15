@@ -394,6 +394,7 @@ $(function(){
       }
       else if (mode == "planets")
       {
+        $(".selectedStar").text( starForPlanets ? starForPlanets.name : "SOL" );
         if (starForPlanets)
           planetsControl.setStar( starForPlanets );
         else
@@ -754,22 +755,29 @@ $(function(){
         var dI = Math.sqrt( (c[0]-g.x)*(c[0]-g.x)+(c[1]-g.y)*(c[1]-g.y)+(c[2]-g.z)*(c[2]-g.z) );
         var dIly = dI*u2mult;
         var cat = $("<p/>");
+        var hideStarData = this.mode == "planets"  &&  ! g.radius
         cat.append( "highlighted: " + (g.name?g.name:"") );
-        cat.append( "<li>xyz: (" + g.x.toFixed(2) + "," + g.y.toFixed(2) + "," + g.z.toFixed(2) + ")</li>" );
+        if (! hideStarData)
+          cat.append( "<li>xyz: (" + g.x.toFixed(2) + "," + g.y.toFixed(2) + "," + g.z.toFixed(2) + ")</li>" );
         if (this.mode == "stars")
         {
           var polar = toPolarHuman( g.x, g.y, g.z );
           if (polar)
             cat.append( "<li>ra/decl from Sol: " + polar[0] + ", " + polar[1] + "</li>" );
         }
-        cat.append( "<li>dist. from Sol: " + d.toFixed(1) + unit1 + " (" + dly.toFixed(1) + unit2 + ")" + "</li>" );
-        cat.append( "<li>dist. from you: " + dI.toFixed(1) + unit1 + " (" + dIly.toFixed(1) + unit2 + ")" + "</li>" );
+        if (! hideStarData)
+        {
+          cat.append( "<li>dist. from Sol: " + d.toFixed(1) + unit1 + " (" + dly.toFixed(1) + unit2 + ")" + "</li>" );
+          cat.append( "<li>dist. from you: " + dI.toFixed(1) + unit1 + " (" + dIly.toFixed(1) + unit2 + ")" + "</li>" );
+        }
         if (g.M)
           cat.append( "<li title='absolute magnitude'>abs mag (M): " + g.M.toFixed(2) + "</li>" );
         if (g.radius)
           cat.append( "<li title='radius'>radius: : " + (g.radius/109.2).toFixed(2) + " solar radii</li>" );
         if (g.planets)
           cat.append( "<li title=''>" + g.planets.length + " planet" + ((g.planets.length==1)?"":"s") + "</li>" );
+        if (g.details)
+          cat.append( g.details );
         $(".status").append( cat );
       }
       this.displayedObjects = displayed;
@@ -972,7 +980,7 @@ $(function(){
     return out;
   }
   
-  planetsControl.setStar( sol );
+  //planetsControl.setStar( sol );
   viewer.setMode( "planets" );
   resize();
   $(window).resize( resize );
@@ -1213,33 +1221,56 @@ $(function(){
   });
   // support two-finger gestures: rotate Hz/Vt
   $(document.body).on('mousewheel', function(evt) {
+    if ($(evt.target).closest(".message-content").length)
+      return;
     viewer.spin( 2, -evt.deltaX/2000 );
     viewer.spin( 1, evt.deltaY/2000 );
   });
 
-  function showMessage( msg )
+  function showMessage( msg, closable )
   {
     var w = $("#message");
     if (msg)
     {
-      w.html( msg );
+      w.html( "" );
+      if (closable)
+      {
+        var closeBtn = $("<span class='close-message'>X</span>");
+        closeBtn.click(function(){ showMessage(); });
+        msg = msg.clone();
+        msg.prepend( closeBtn );
+        w.append( msg );
+      }
+      else
+        w.append( msg );
       w.show();
     }
     else
+    {
       w.hide();
+      w.html("");
+    }
   }
 
-  showMessage( "<br/>Loading..." );
+  showMessage( "<br/><br/><br/>Loading..." );
   setTimeout( function(){
     correlateExoplanets( exoplanets, stars );
+    // (update star again, now that the .planet field is filled in)
+    viewer.setMode( "planets" );
     showMessage();
   }, 100 );
   
+  $("a.popup").click(function(){
+    var ref = $(this).attr("href");
+    var content = $("#"+ref);
+    showMessage( content, true );
+    return false;
+  });
 });
-//TODO show more exoplanet metadata
-//TODO startup too slow - correspond stars with planets more quickly or do this offline
-//TODO planet artwork
-//TODO galaxy artwork
-//TODO twist gesture to rotate around Y axis
+//TODO improve startup speed - JS is really large, and correlateExoplanets() could be done offline?
 //TODO galaxy clusters are incomplete - maybe that's just the way NED is?
-//TODO constellation lines?
+//TODO would constellation lines be cool, or annoying?
+//TODO show habitable zones - requires luminosity relative to sun (L/Lsun) - http://depts.washington.edu/naivpl/content/hz-calculator
+//  absolute magnitude in terms of L/Lsun - plug this into the above: M = +4.77 - 2.5 log (L/Lsun)
+//  (source: http://www.astro.cornell.edu/academics/courses/astro2201/mag_absolute.htm)
+//  NOTE: calculator (fortran code) requires tEff(K), which can apparently be calculated from L/Lsun
