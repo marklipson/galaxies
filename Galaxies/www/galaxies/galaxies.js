@@ -220,7 +220,8 @@ $(function(){
   // patch up object lists
   var sol = { x: 0, y: 0, z: 0, M: 4.83, name: "Sol", home: true, planets: [{},{},{}] };
   stars.push( sol );
-  sol.image = loadImage( "img/sun.png" );
+  // TODO decide whether to show the graphic for the Sun
+  //sol.image = loadImage( "img/sun.png" );
   if (typeof galaxyClusters == "undefined")
     galaxyClusters = [{ x:0, y:0, z:0 }];
   for (var n=0; n < galaxyClusters.length; n++)
