@@ -86,6 +86,21 @@
       pos[1] = r * (cosW * sinNode  +  sinW * cosNode * cosIncl);
       pos[2] = r * (sinW * Math.sin( i ));
       return pos;
+    },
+    /**
+     * Get points for drawing the planet's orbit.
+     */
+    getOrbit: function( tJD )
+    {
+      var out = [];
+      var dt = this.period / 100;
+      var t = tJD;
+      for (var n=0; n < 100; n++)
+      {
+        out.push( this.position( t ) );
+        t += dt;
+      }
+      return out;
     }
   };
 
@@ -198,6 +213,11 @@
       var pl = currentPlanets[n];
       var pos = pl.position( t );
       var plOut = { name: pl.name, x: pos[0], y: pos[1], z: pos[2], r: pl.radius * rScale, color: pl.color, mag: 100 };
+      plOut.t = t;
+      plOut.planet = pl;
+      plOut.orbit = function() {
+        return this.planet.getOrbit( this.t );
+      };
       if (pl.pR  ||  pl.a)
       {
         var details = "";

@@ -92,6 +92,12 @@ $(function(){
       bb = "0" + bb;
     return "#" + rr + gg + bb;
   }
+  function loadImage( src )
+  {
+    var img = new Image();
+    img.src = src;
+    return img;
+  }
   
   // correlate exoplanets to parent stars
   function correlateExoplanets( exoplanets, stars )
@@ -212,9 +218,9 @@ $(function(){
   */
   
   // patch up object lists
-  galaxies.push({ x: 0, y: 0, z: 0, name: "Milky Way", home: true });
   var sol = { x: 0, y: 0, z: 0, M: 4.83, name: "Sol", home: true, planets: [{},{},{}] };
   stars.push( sol );
+  sol.image = loadImage( "img/sun.png" );
   if (typeof galaxyClusters == "undefined")
     galaxyClusters = [{ x:0, y:0, z:0 }];
   for (var n=0; n < galaxyClusters.length; n++)
@@ -226,6 +232,103 @@ $(function(){
       gc.home = true;
       break;
     }
+  }
+  galaxies.push({ x: 0, y: 0, z: 0, name: "Milky Way", home: true });
+  var cvt = 1/20;  // converts from diameter in kpc, to radius
+  for (var n=0; n < galaxies.length; n++)
+  {
+    var g = galaxies[n];
+    if (g.name == "Milky Way")
+    {
+      g.image = loadImage( "img/milky-way.png" );
+      g.mag = -20.5;
+      g.r = 35*cvt;
+    }
+    else if (g.name == "SMC")
+    {
+      g.image = loadImage( "img/small-magellanic-cloud.png" );
+      g.r = 2.14*cvt;
+      g.mag = -1.5; // guess
+    }
+    else if (g.name == "LMC")
+    {
+      g.image = loadImage( "img/large-magellanic-cloud.png" );
+      g.r = 4.3*cvt;
+      g.mag = -1.96;
+    }
+    else if (g.name == "And1")
+    {
+      g.name = "Andromeda (And1)";
+      g.image = loadImage( "img/andromeda.png" );
+      g.r = 43*cvt;
+      g.mag = -21.5;
+    }
+    else if (g.name == "ESO351-030")
+    {
+      g.name = "Sculptor Dwarf (ESO351-030)";
+      g.r = 0.92*cvt;
+      g.mag = 1;
+    }
+    else if (g.name == "UGC09749")
+    {
+      g.name = "UMi Dwarf (UGC09749)";
+      g.r = 0.84*cvt;
+      g.mag = 1;
+    }
+    else if (g.name == "UGC10822")
+    {
+      g.name = "Draco Dwarf (UGC10822)";
+      g.r = 0.61*cvt;
+      g.mag = 1;
+    }
+    else if (g.name == "Carina")
+    {
+      g.image = loadImage( "img/carina.png" );
+      g.r = 0.67*cvt;
+      g.mag = 1;
+    }
+    else if (g.name == "IC0010")
+    {
+      g.name = "IC10";
+      g.image = loadImage( "img/ic10.png" );
+      g.r = 1.34*cvt;
+      g.max = -1;
+    }
+    else if (g.name == "NGC0598")
+    {
+      g.name = "Triangulum (NGC0598)"
+      g.image = loadImage( "img/triangulum.png" );
+      g.r = 55*cvt;
+      g.max = -18.87;
+    }
+    else if (g.name == "NGC0300")
+    {
+      g.name = "NGC300"
+      g.image = loadImage( "img/ngc300.png" );
+      g.r = 11.9*cvt;
+      g.max = -17.92;
+    }
+    else if (g.name == "SextansdSph")
+    {
+      g.r = 0.78*cvt;
+      g.max = -7.98;
+    }
+    else if (g.name == "SextansA")
+    {
+      g.name = "Sextans A";
+      g.image = loadImage( "img/sextansA.png" );
+      g.r = 2.3*cvt;
+      g.max = -13.95;
+    }
+    /*
+    else if (g.name == "Bootes1")
+    {
+      g.name = "Bootes1 ()"
+      g.image = loadImage( "img/bootes1.png" );
+      g.r = 0.45*cvt;
+      g.max = -5.8;
+    }
+    */
   }
   if (stars)
   {
@@ -331,6 +434,7 @@ $(function(){
     isometricZ: 20,
     showNearby: false,
     showExo: 0,
+    showOrbits: false,
     zoom: 400,
     limitDistance: 1500,
     speedMultiplier: 1,
@@ -544,6 +648,11 @@ $(function(){
       var oo = this.objectList;
       for (var n=0; n < oo.length; n++)
         order[n] = n;
+      ctx.fillStyle = this.bgColor;
+      ctx.globalAlpha = 1;
+      ctx.fillRect( 0, 0, canvasWidth, canvasHeight );
+      if (this.showCoords)
+        this.drawCoords( ctx, this.showCoords );
       if (typeof planets != "undefined"  &&  this.objectList === planets)
       {
         var nMax = 10;
@@ -562,11 +671,37 @@ $(function(){
               order[n1] = order[n2];
               order[n2] = t;
             }
+        // draw orbits
+        if (this.showOrbits)
+        {
+          ctx.strokeStyle = "#ff4040";
+          ctx.lineWidth = 1.5;
+          ctx.globalAlpha = 0.3;
+          for (var n=0; n < oo.length  &&  n < nMax; n++)
+          {
+            var obj = oo[n];
+            if (! obj.orbit)
+              continue;
+            var pts = obj.orbit.call( obj );
+            ctx.beginPath();
+            var s0;
+            for (var np=0; np <= pts.length; np++)
+            {
+              var pt = pts[ np % pts.length ];
+              var s = this.toScreenCoords( pt[0], pt[1], pt[2] );
+              if (s)
+              {
+                if (s0)
+                  ctx.lineTo( s[0], s[1] );
+                else
+                  ctx.moveTo( s[0], s[1] );
+              }
+              s0 = s;
+            }
+            ctx.stroke();
+          }
+        }
       }
-      ctx.fillStyle = this.bgColor;
-      ctx.fillRect( 0, 0, canvasWidth, canvasHeight );
-      if (this.showCoords)
-        this.drawCoords( ctx, this.showCoords );
       var displayed = [];
       var radiusMult = this.zoom * this.objectRadiusMult;
       var defaultObjectRadius = this.objectRadius * radiusMult;
@@ -575,6 +710,7 @@ $(function(){
       var searchC = [0,0,0];
       var searchM = 0;
       var rMin = (this.mode == "galaxies") ? 0 : 0.30;
+      var maxMag = 0.7;
       for (var nObj=0; nObj < this.objectList.length; nObj++)
       {
         var nG = order[ nObj ];
@@ -597,6 +733,8 @@ $(function(){
         var rO = defaultObjectRadius;
         if (galaxy.r)
           rO = galaxy.r * radiusMult;
+        if (galaxy.name == "And1")
+          var hhh = 111;
         var r = rO / s[2];
         if (r < rMin)
           if (! match)
@@ -609,13 +747,13 @@ $(function(){
           continue;
         if (s[1] - rp > canvasHeight  ||  s[1] + rp < 0)
           continue;
-        var mag = gMag / Math.sqrt(s[2]);
-        if (mag > 0.7)
-          mag = 0.7;
+        var mag = Math.pow(Math.E,-gMag) / Math.sqrt(s[2]);
+        if (mag > maxMag)
+          mag = maxMag;
         if (mag < 0.3)
           mag = 0.3;
-        if (galaxy.home  &&  mag < 0.5)
-          mag = 0.5;
+        if (galaxy.home  &&  mag < 0.7)
+          mag = 0.7;
         var fadeClose = 1;
         if (r > 40)
           fadeClose = Math.sqrt(40)/Math.sqrt(r) - 0.08;
@@ -641,20 +779,35 @@ $(function(){
           var r1 = this.fuzzy ? 4 : 12;
           if (r > r0)
           {
-            var a = ctx.globalAlpha;
-            var nLvl = this.fuzzy ? 12 : 8;
-            var aa = this.fuzzy ? 0.19  : 0.33;
-            var edge = this.fuzzy ? 0.8 : 0.25;
-            if (r < r1)
-              edge *= (r-r0)/(r1-r0);
-            for (var lvl=0; lvl < nLvl; lvl++)
+            var drawDot = true;
+            if (galaxy.image)
             {
-              ctx.globalAlpha = a * (nLvl-lvl)/nLvl * aa;
-              ctx.beginPath();
-              var r1 = r*(1-edge) + r*edge * ((lvl+1)/nLvl);
-              ctx.arc( s[0], s[1], r1, 0, 6.2832, false );
-              ctx.closePath();
-              ctx.fill();
+              try
+              {
+                ctx.drawImage( galaxy.image, s[0] - r, s[1] - r, r*2+1, r*2+1 );
+                drawDot = false;
+              }
+              catch( err )
+              {
+              }
+            }
+            if (drawDot)
+            {
+              var a = ctx.globalAlpha;
+              var nLvl = this.fuzzy ? 12 : 8;
+              var aa = this.fuzzy ? 0.19  : 0.33;
+              var edge = this.fuzzy ? 0.8 : 0.25;
+              if (r < r1)
+                edge *= (r-r0)/(r1-r0);
+              for (var lvl=0; lvl < nLvl; lvl++)
+              {
+                ctx.globalAlpha = a * (nLvl-lvl)/nLvl * aa;
+                ctx.beginPath();
+                var r1 = r*(1-edge) + r*edge * ((lvl+1)/nLvl);
+                ctx.arc( s[0], s[1], r1, 0, 6.2832, false );
+                ctx.closePath();
+                ctx.fill();
+              }
             }
           }
           else
@@ -747,7 +900,7 @@ $(function(){
         else
         {
           unit1 = "Mpc";
-          unit1 = "Mly";
+          unit2 = "Mly";
         }
         var g = this.highlightObject;
         var d = Math.sqrt( g.x*g.x+g.y*g.y+g.z*g.z );
@@ -759,7 +912,7 @@ $(function(){
         cat.append( "highlighted: " + (g.name?g.name:"") );
         if (! hideStarData)
           cat.append( "<li>xyz: (" + g.x.toFixed(2) + "," + g.y.toFixed(2) + "," + g.z.toFixed(2) + ")</li>" );
-        if (this.mode == "stars")
+        if (this.mode == "stars"  ||  this.mode == "galaxies")
         {
           var polar = toPolarHuman( g.x, g.y, g.z );
           if (polar)
@@ -1179,6 +1332,12 @@ $(function(){
     else
       viewer.showCoords = 0;
   });
+  $(".showOrbits").toggleButton( ["off","on"], function(mode){
+    if (mode == "on")
+      viewer.showOrbits = true;
+    else
+      viewer.showOrbits = false;
+  });
   $(".showExo").toggleButton( ["off","1+","2+"], function(mode){
     if (mode == "1+")
       viewer.showExo = 1;
@@ -1267,6 +1426,8 @@ $(function(){
     return false;
   });
 });
+//TODO real star radius calculations!!
+//  http://skyserver.sdss.org/dr1/en/proj/advanced/hr/radius1.asp - need to use B-V from star database
 //TODO improve startup speed - JS is really large, and correlateExoplanets() could be done offline?
 //TODO galaxy clusters are incomplete - maybe that's just the way NED is?
 //TODO would constellation lines be cool, or annoying?
@@ -1274,3 +1435,5 @@ $(function(){
 //  absolute magnitude in terms of L/Lsun - plug this into the above: M = +4.77 - 2.5 log (L/Lsun)
 //  (source: http://www.astro.cornell.edu/academics/courses/astro2201/mag_absolute.htm)
 //  NOTE: calculator (fortran code) requires tEff(K), which can apparently be calculated from L/Lsun
+//
+// tool to double check parts of the sky: http://skyserver.sdss.org/dr1/en/tools/chart/navi.asp
