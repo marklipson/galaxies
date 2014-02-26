@@ -2,6 +2,9 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import static java.lang.Math.*;
 
 /**
@@ -174,12 +177,16 @@ public class EDD_Galaxies
       String cols[] = line.split( "\\s*,\\s*" );
       if (! cols[0].matches( "[0-9]+" ))
         continue;
-      String name = cols[6];
-      String name2 = cols[5];
-      if (name.isEmpty())
-        name = name2;
-      else
-        name += " (" + name2 + ")";
+      String name = cols[6];  // proper name
+      String name2 = cols[5]; // bayer flamstead catalog
+      String name3 = cols[4]; // gliese catalog
+      String name4 = cols[2]; // HD
+      if (! name2.isEmpty())
+        name += (name.isEmpty()?"":", ") + name2;
+      if (! name3.isEmpty())
+        name += (name.isEmpty()?"":", ") + name3;
+      if (! name4.isEmpty())
+        name += (name.isEmpty()?"":", ") + "HD " + name4;
       double ra = Double.parseDouble( cols[7] )*15 * d2r;
       double decl = Double.parseDouble( cols[8] ) * d2r;
       //if (name.contains("Rigel"))
@@ -241,10 +248,12 @@ public class EDD_Galaxies
       if (! cols[1].matches( "[0-9\\.]+" ))
         continue;
       double D = Double.parseDouble( cols[1] );
-      double gLon = Double.parseDouble( cols[14] ) * d2r;
-      double gLat = Double.parseDouble( cols[15] ) * d2r;
+      //double gLon = Double.parseDouble( cols[14] ) * d2r;
+      //double gLat = Double.parseDouble( cols[15] ) * d2r;
+      double gLon = parseRA( cols[12] ) * d2r;
+      double gLat = parseDecl( cols[13] ) * d2r;
       String strM = cols[7];
-      double M = strM.isEmpty() ? Double.NaN : Double.parseDouble( strM );
+      //double M = strM.isEmpty() ? Double.NaN : Double.parseDouble( strM );
       String name = cols[27];
       String cluster = (cols.length <= 48) ? null : cols[48];
       double x = cos(gLon) * cos(gLat) * D;
@@ -307,13 +316,36 @@ public class EDD_Galaxies
     System.out.println( count );
   }
 
+  final static Pattern ptnRA = Pattern.compile( "(\\d\\d)(\\d\\d)(\\d\\d\\.\\d+)" );
+  final static Pattern ptnDecl = Pattern.compile( "([\\+\\-])(\\d\\d)(\\d\\d)(\\d\\d\\.\\d+)" );
+  public static double parseRA( String hhmmss )
+  {
+    Matcher m = ptnRA.matcher( hhmmss );
+    if (! m.find())
+      return Double.NaN;
+    double hh = Integer.valueOf( m.group(1) );
+    double mm = Integer.valueOf( m.group(2) );
+    double ss = Double.valueOf( m.group(3) );
+    return (hh + mm/60 + ss/3600)*15;
+  }
+  public static double parseDecl( String ddmmss )
+  {
+    Matcher m = ptnDecl.matcher( ddmmss );
+    if (! m.find())
+      return Double.NaN;
+    int sign = m.group(1).equals( "+" ) ? 1 : -1;
+    double dd = Integer.valueOf( m.group(2) );
+    double mm = Integer.valueOf( m.group(3) );
+    double ss = Double.valueOf( m.group(4) );
+    return sign * (dd + mm/60 + ss/3600);
+  }
   
   public static void main( String[] args )
   {
     try
     {
-      process_EXO_data();
-      //process_EDD_data();
+      //process_EXO_data();
+      process_EDD_data();
       //process_NED_data();
       //process_HYG_data();
     }
