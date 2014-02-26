@@ -212,7 +212,7 @@
     {
       var pl = currentPlanets[n];
       var pos = pl.position( t );
-      var plOut = { name: pl.name, x: pos[0], y: pos[1], z: pos[2], r: pl.radius * rScale, color: pl.color, mag: 100 };
+      var plOut = { name: pl.name, x: pos[0], y: pos[1], z: pos[2], r: pl.radius * rScale, color: pl.color, mag: -1 };
       plOut.t = t;
       plOut.planet = pl;
       plOut.orbit = function() {
