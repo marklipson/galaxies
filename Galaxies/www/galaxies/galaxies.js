@@ -10,6 +10,7 @@ $(function(){
   var ctx, altCtx, altCanvas;
   var nearbyTable = [];
   var frameRate = 10;
+  var overallSpeedMultiplier = 1;
 
   function resize()
   {
@@ -756,8 +757,8 @@ $(function(){
         if (galaxy.home  &&  mag < 0.7)
           mag = 0.7;
         var fadeClose = 1;
-        if (r > 40)
-          fadeClose = Math.sqrt(40)/Math.sqrt(r) - 0.08;
+        if (r > 200)
+          fadeClose = Math.sqrt(200)/Math.sqrt(r) - 0.08;
         if (fadeClose < 0.04)
           continue;
         if (galaxy.alpha)
@@ -778,37 +779,34 @@ $(function(){
         {
           var r0 = this.fuzzy ? 2 : 6;
           var r1 = this.fuzzy ? 4 : 12;
-          if (r > r0)
+          if (r > 2  &&  galaxy.image  &&  galaxy.image.width)
           {
-            var drawDot = true;
-            if (galaxy.image)
+            try
             {
-              try
-              {
-                ctx.drawImage( galaxy.image, s[0] - r, s[1] - r, r*2+1, r*2+1 );
-                drawDot = false;
-              }
-              catch( err )
-              {
-              }
+              var ir = galaxy.image.width / galaxy.image.height;
+              ctx.drawImage( galaxy.image, s[0] - r*ir, s[1] - r, ir*r*2+1, r*2+1 );
+              drawDot = false;
             }
-            if (drawDot)
+            catch( err )
             {
-              var a = ctx.globalAlpha;
-              var nLvl = this.fuzzy ? 12 : 8;
-              var aa = this.fuzzy ? 0.19  : 0.33;
-              var edge = this.fuzzy ? 0.8 : 0.25;
-              if (r < r1)
-                edge *= (r-r0)/(r1-r0);
-              for (var lvl=0; lvl < nLvl; lvl++)
-              {
-                ctx.globalAlpha = a * (nLvl-lvl)/nLvl * aa;
-                ctx.beginPath();
-                var r1 = r*(1-edge) + r*edge * ((lvl+1)/nLvl);
-                ctx.arc( s[0], s[1], r1, 0, 6.2832, false );
-                ctx.closePath();
-                ctx.fill();
-              }
+            }
+          }
+          else if (r > r0)
+          {
+            var a = ctx.globalAlpha;
+            var nLvl = this.fuzzy ? 12 : 8;
+            var aa = this.fuzzy ? 0.19  : 0.33;
+            var edge = this.fuzzy ? 0.8 : 0.25;
+            if (r < r1)
+              edge *= (r-r0)/(r1-r0);
+            for (var lvl=0; lvl < nLvl; lvl++)
+            {
+              ctx.globalAlpha = a * (nLvl-lvl)/nLvl * aa;
+              ctx.beginPath();
+              var r1 = r*(1-edge) + r*edge * ((lvl+1)/nLvl);
+              ctx.arc( s[0], s[1], r1, 0, 6.2832, false );
+              ctx.closePath();
+              ctx.fill();
             }
           }
           else
@@ -1150,7 +1148,7 @@ $(function(){
   {
     var fast = keysdown.k18; // alt
     var spin = keysdown.k16; // shift
-    var base = viewer.speedMultiplier;
+    var base = viewer.speedMultiplier * overallSpeedMultiplier;
     var s = fast ? base*15 : base;
     var sA = fast ? 0.07 : 0.01;
     s *= mult;
@@ -1347,6 +1345,14 @@ $(function(){
     else
       viewer.showExo = 0;
   });
+  $(".speedMult").toggleButton( ["0.1","1","10"], function(mode){
+    if (mode == "0.1")
+      overallSpeedMultiplier = 0.1;
+    else if (mode == "1")
+      overallSpeedMultiplier = 1;
+    else if (mode == "10")
+      overallSpeedMultiplier = 10;
+  }, 1);
   $(".search").click( function(){
     viewer.searchValue = prompt( "Search for:" );
     $(this).text( "search" + (viewer.searchValue?":"+viewer.searchValue:"") );

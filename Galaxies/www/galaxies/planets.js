@@ -25,6 +25,7 @@
     this.radius = misc.radius;
     this.color = misc.color;
     this.period = misc.period;
+    this.image = misc.image;
     this.a = a;
     this.e = e;
     this.p = p;
@@ -103,13 +104,23 @@
       return out;
     }
   };
+  function loadImage( src )
+  {
+    var img = new Image();
+    img.src = src;
+    return img;
+  }
+  var imgEar = loadImage( "img/earth.png" );
+  var imgVen = loadImage( "img/venus.png" );
+  var imgJup = loadImage( "img/jupiter.png" );
+  var imgSat = loadImage( "img/saturn.png" );
 
   sunPlanets.push( new Planet( "Mercury", {radius:1516/rEarth, color:"#3c3837", period:87.97}, 0.3870984, 0.205614929, 1.32465, 0.027113, 0.82283, 0.020678, 0.12223, 3.03396e-5, 3.10982, 2608.81471 ) );
-  sunPlanets.push( new Planet( "Venus",   {radius:3760/rEarth, color:"#d7d4cf", period:224.7}, 0.72333015, 0.006816361, 2.27138, 0.023951, 1.32275, 0.015953, 0.059230123, 2.18554e-5, 5.98242, 1021.352936 ) );
-  sunPlanets.push( new Planet( "Earth",   {radius:1,           color:"#a5bee7", period:365.2422}, 1.00000129, 0.016749801, 1.76660, 0.029922, 0, 0, 0, 0, 1.74004, 628.331955 ) );
+  sunPlanets.push( new Planet( "Venus",   {radius:3760/rEarth, color:"#d7d4cf", period:224.7, image: imgVen}, 0.72333015, 0.006816361, 2.27138, 0.023951, 1.32275, 0.015953, 0.059230123, 2.18554e-5, 5.98242, 1021.352936 ) );
+  sunPlanets.push( new Planet( "Earth",   {radius:1,           color:"#a5bee7", period:365.2422, image: imgEar}, 1.00000129, 0.016749801, 1.76660, 0.029922, 0, 0, 0, 0, 1.74004, 628.331955 ) );
   sunPlanets.push( new Planet( "Mars",    {radius:2106/rEarth, color:"#e8c187", period:686.98}, 1.523678, 0.093309, 5.83321, 0.032121, 0.851488, 0.013560, 0.03229, -0.113277, 5.12674, 334.085624 ) );
-  sunPlanets.push( new Planet( "Jupiter", {radius:43441/rEarth,color:"#b4a49c", period:11.86*365.2422}, 5.202561, 0.048335, 0.22202, 0.028099, 1.73561, 0.017637, 0.02284, -0.000099, 4.15474, 52.993466 ) );
-  sunPlanets.push( new Planet( "Saturn",  {radius:36184/rEarth,color:"#c1b853", period:29.46*365.2422}, 9.554747, 0.05589, 1.58996, 0.034181, 1.96856, 0.015240, 0.043503, -0.000068, 4.65243, 21.354276 ) );
+  sunPlanets.push( new Planet( "Jupiter", {radius:43441/rEarth,color:"#b4a49c", period:11.86*365.2422, image: imgJup}, 5.202561, 0.048335, 0.22202, 0.028099, 1.73561, 0.017637, 0.02284, -0.000099, 4.15474, 52.993466 ) );
+  sunPlanets.push( new Planet( "Saturn",  {radius:36184/rEarth,color:"#c1b853", period:29.46*365.2422, image: imgSat}, 9.554747, 0.05589, 1.58996, 0.034181, 1.96856, 0.015240, 0.043503, -0.000068, 4.65243, 21.354276 ) );
   sunPlanets.push( new Planet( "Uranus",  {radius:15759/rEarth,color:"#a6c1d5", period:30685}, 19.21814, 0.046344, 2.994088, 0.025908, 1.282417, 0.008703, 0.013482, 0.000011, 4.262050, 7.502534 ) );
   sunPlanets.push( new Planet( "Neptune", {radius:15299/rEarth,color:"#90aee0", period:60190}, 30.10957, 0.008997, 0.815546, 0.024864, 2.280820, 0.019180, 0.031054, -0.000167, 1.474070, 3.837733 ) );
 
@@ -212,7 +223,7 @@
     {
       var pl = currentPlanets[n];
       var pos = pl.position( t );
-      var plOut = { name: pl.name, x: pos[0], y: pos[1], z: pos[2], r: pl.radius * rScale, color: pl.color, mag: -1 };
+      var plOut = { name: pl.name, x: pos[0], y: pos[1], z: pos[2], r: pl.radius * rScale, color: pl.color, mag: -1, image: pl.image };
       plOut.t = t;
       plOut.planet = pl;
       plOut.orbit = function() {
